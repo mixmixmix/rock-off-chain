@@ -4,14 +4,14 @@ import { createAppSessionMessage } from '@erc7824/nitrolite';
 
 const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
 
-export function useApplicationSession(ws, signer, senderAddress) {
+export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
   const createApplicationSession = useCallback(
     async (participantB, amount) => {
       log('🔧 Starting application session creation');
 
       try {
-        const participantA = senderAddress;
-        log('📍 Participant A:', participantA);
+        const participantA = sessionAddr;
+        log('📍 Session key (participant A):', participantA);
         log('📍 Participant B:', participantB);
         log('📍 Amount:', amount);
 
@@ -34,7 +34,7 @@ export function useApplicationSession(ws, signer, senderAddress) {
         log('📦 Allocations:', allocations);
 
         const signedMessage = await createAppSessionMessage(
-          signer,
+          sessionSignerFn,
           [{ definition: appDefinition, allocations }]
         );
 
@@ -87,7 +87,7 @@ export function useApplicationSession(ws, signer, senderAddress) {
         };
       }
     },
-    [ws, signer, senderAddress]
+    [ws, sessionSignerFn, sessionAddr]
   );
 
   return { createApplicationSession };

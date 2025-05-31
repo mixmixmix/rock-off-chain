@@ -38,7 +38,8 @@ export default function App() {
     channels,
     balances,
     connect,
-    signer
+    walletAddress: resolvedAddress,
+    sessionSigner
   } = useClearNodeConnection({
     wallet,
     walletClient,
@@ -47,12 +48,15 @@ export default function App() {
     AUTH_TYPES
   });
 
-  const { createApplicationSession } = useApplicationSession(ws, signer, walletAddress);
-
+  const { createApplicationSession } = useApplicationSession(
+    ws,
+    sessionSigner?.sign,         // ✅ not `signer.sign`
+    sessionSigner?.address       // ✅ not `walletAddress`
+  );
   const handleSessionCreate = async () => {
-    const participantB = prompt('Enter other participant address:');
-    const amount = prompt('Enter amount (as string):');
-    alert('Sending session creation request...');
+    const participantB = '0x656347DCa3bF0c127C8E4A93625f27b2367705a0';
+    const amount = '100';
+
     try {
       const result = await createApplicationSession(participantB, amount);
 
@@ -83,10 +87,18 @@ export default function App() {
         canConnect={!connected}
       />
 
-      {isAuthenticated && (
-        <button onClick={handleSessionCreate} style={{ marginBottom: '1rem' }}>
-          Create Application Session
-        </button>
+      {isAuthenticated && sessionSigner && (
+        <>
+          <button onClick={handleSessionCreate} style={{ marginBottom: '1rem' }}>
+            Create Application Session
+          </button>
+          <button onClick={() => {
+            localStorage.removeItem('clearnode_session_privkey');
+            window.location.reload();
+          }}>
+            🔁 Reset Session Key
+          </button>
+        </>
       )}
 
       <ChannelList channels={channels} balances={balances} />
