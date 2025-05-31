@@ -35,7 +35,7 @@ export default function App() {
 
   const canvasRef = useRef(null);
   const { recording, audioToggle, monoData } = useAudioRecorder(canvasRef);
-  const { freqSeries } = useAudioAnalysis(monoData);
+  const { freqSeries, silentFrames } = useAudioAnalysis(monoData);
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
