@@ -10,26 +10,30 @@ export function freqToNote(freq) {
 }
 
 // Chart data generator
-export function chartData(freqSeries) {
+export function chartData(freqSeries, silentFrames = []) {
   return {
-    labels: freqSeries.map((_, i) => (i * 512 / 44100).toFixed(2)), // time in seconds
+    labels: freqSeries.map((_, i) => (i * 512 / 44100).toFixed(2)),
     datasets: [{
       label: 'Dominant Frequency (Hz)',
-      data: freqSeries,
-      borderWidth: 1,
+      data: freqSeries.map((f, i) => silentFrames[i] ? null : f),
+      borderWidth: 2, // thicker line
       tension: 0.2,
-      pointRadius: 0,
+      pointRadius: 2.5, // larger points
+      spanGaps: true,
     }],
   };
 }
 
-// Chart.js options
+// Chart.js options with piano notes and Hz
 export const chartOptions = {
   scales: {
     y: {
       type: 'logarithmic',
       ticks: {
-        callback: (val) => `${val} Hz`,
+        callback: (val) => {
+          const note = freqToNote(val);
+          return `${val} Hz (${note})`;
+        },
       },
     },
   },
