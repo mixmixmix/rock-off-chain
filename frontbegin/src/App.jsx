@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 
 import { createWalletClient, http } from 'viem';
@@ -11,9 +11,7 @@ import { useApplicationSession } from './hooks/useApplicationSession';
 import StatusPanel from './components/StatusPanel';
 import ChannelList from './components/ChannelList';
 
-import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
-import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
-
+import { useAudioRecorder } from './hooks/useAudioRecorder';
 
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
@@ -21,71 +19,7 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [participantB, setParticipantB] = useState(null);
 
-  //audio stuff
-const mediaRec = useRef(null);
-const chunks = useRef([]);
-const [freq, setFreq] = useState(null);
-const [recording, setRecording] = useState(false);
-
-
-const audioToggle = async () => {
-  if (!recording) {
-    try {
-      // ─── start recording ──────────────────────────────────────────────────────
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      mediaRec.current = new MediaRecorder(stream);
-      mediaRec.current.ondataavailable = e => chunks.current.push(e.data);
-
-      mediaRec.current.onstop = async () => {
-        // turn the buffers we collected into a single WebM blob
-        const blob = new Blob(chunks.current, { type: "audio/webm" });
-        chunks.current = [];
-
-        // decode it so we can run analysis
-        const arrayBuf = await blob.arrayBuffer();
-        const ctx      = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuf = await ctx.decodeAudioData(arrayBuf);
-        const mono     = audioBuf.getChannelData(0);        // Float32Array
-
-        console.log("hello dolly");
-        console.log(mono.constructor.name, mono.length);
-
-        // ─── Essentia.js (WASM) analysis ───────────────────────────────────────
-        const essentia = new Essentia(EssentiaWASM);
-        const vfFrame  = essentia.arrayToVector(mono);
-
-        console.log("hello dolly2");
-        console.log(vfFrame.constructor.name, vfFrame.length);
-
-        // quick smoke-test
-        const e  = new Essentia(EssentiaWASM);
-        const vf = e.arrayToVector(new Float32Array([1, 2, 3]));
-        console.log(e.Mean(vf).mean); // => 2
-        vf.delete();                  // free the memory Essentia allocated
-
-        // actual pitch detection
-        const { pitch } = essentia.PitchYinFFT(vfFrame);
-        setFreq(Math.round(pitch));
-
-        vfFrame.delete();             // tidy up
-      };
-
-      mediaRec.current.start();
-      setRecording(true);
-    } catch (err) {
-      console.error("Could not start audio capture:", err);
-    }
-  } else {
-    // ─── stop recording ────────────────────────────────────────────────────────
-    if (mediaRec.current) {
-      mediaRec.current.stop();
-      mediaRec.current.stream.getTracks().forEach(t => t.stop());
-    }
-    setRecording(false);
-  }
-};
-
+  const { freq, recording, audioToggle } = useAudioRecorder();
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
@@ -100,9 +34,6 @@ const audioToggle = async () => {
     chain: polygon,
     account: wallet,
   });
-
-
-
 
   const {
     ws,
@@ -128,7 +59,7 @@ const audioToggle = async () => {
     closeApplicationSession
   } = useApplicationSession(ws, sessionSigner?.sign, sessionSigner?.address);
 
-    const total_amount = '0.0001';
+  const total_amount = '0.0001';
   const handleSessionCreate = async () => {
     try {
       const result = await createApplicationSession(participantB, total_amount);
@@ -145,70 +76,66 @@ const audioToggle = async () => {
     }
   };
 
-useEffect(() => {
-  if (!ws || !sessionSigner || !requestLedgerBalances) return;
+  useEffect(() => {
+    if (!ws || !sessionSigner || !requestLedgerBalances) return;
 
-  const interval = setInterval(async () => {
-    if (ws.readyState !== WebSocket.OPEN) return;
+    const interval = setInterval(async () => {
+      if (ws.readyState !== WebSocket.OPEN) return;
 
-    const ts1 = Date.now();
-    const ts2 = Date.now();
-    const payload = [ts1, "ping", [], ts2];
-    const signature = await sessionSigner.sign(payload);
+      const ts1 = Date.now();
+      const ts2 = Date.now();
+      const payload = [ts1, "ping", [], ts2];
+      const signature = await sessionSigner.sign(payload);
 
-    ws.send(JSON.stringify({
-      req: payload,
-      sig: [signature]
-    }));
-    console.log('📡 Sent signed ping');
+      ws.send(JSON.stringify({
+        req: payload,
+        sig: [signature]
+      }));
+      console.log('📡 Sent signed ping');
 
-    // 💰 Request ledger balance every ping
-    const account = sessionSigner.address;
-    await requestLedgerBalances(account);
-    console.log(`[Ledger] Requested balances for ${account}`);
-  }, 10000);
+      const account = sessionSigner.address;
+      await requestLedgerBalances(account);
+      console.log(`[Ledger] Requested balances for ${account}`);
+    }, 10000);
 
-  return () => clearInterval(interval);
-}, [ws, sessionSigner, requestLedgerBalances]);
+    return () => clearInterval(interval);
+  }, [ws, sessionSigner, requestLedgerBalances]);
 
+  const rollDice = () => {
+    const result = Math.floor(Math.random() * 6) + 1;
+    console.log(`🎲 Dice rolled: ${result}`);
+    localStorage.setItem('last_dice_result', result.toString());
 
-const rollDice = () => {
-  const result = Math.floor(Math.random() * 6) + 1;
-  console.log(`🎲 Dice rolled: ${result}`);
+    const appSessionId = localStorage.getItem('app_session_id');
+    if (!appSessionId) {
+      console.warn('❌ No app session ID in localStorage');
+      return;
+    }
+  };
 
-  localStorage.setItem('last_dice_result', result.toString());
+  const handleCloseSession = async () => {
+    console.log('📦 Closing session...');
+    const appSessionId = localStorage.getItem('app_session_id');
+    const dice = parseInt(localStorage.getItem('last_dice_result') || '0');
+    console.log('🎲 Previous dice result:', dice);
 
-  const appSessionId = localStorage.getItem('app_session_id');
-  if (!appSessionId) {
-    console.warn('❌ No app session ID in localStorage');
-    return;
-  }
-};
+    if (!appSessionId) {
+      console.warn('❌ No app session ID in localStorage');
+      return;
+    }
 
-const handleCloseSession = async () => {
-  console.log('📦 Closing session...');
-  const appSessionId = localStorage.getItem('app_session_id');
-  const dice = parseInt(localStorage.getItem('last_dice_result') || '0');
-  console.log('🎲 Previous dice result:', dice);
+    const payout = dice >= 4 ? '0.0001' : '0';
+    console.log(`💰 Calculated payout to B: ${payout} USDC`);
 
-  if (!appSessionId) {
-    console.warn('❌ No app session ID in localStorage');
-    return;
-  }
-
-  // Rule: payout if dice ≥ 4
-  const payout = dice >= 4 ? '0.0001' : '0';
-  console.log(`💰 Calculated payout to B: ${payout} USDC`);
-
-  try {
-    const result = await closeApplicationSession(appSessionId, participantA, participantB, total_amount-payout,  payout);
-    console.log('✅ Session close result:', result);
-    alert(`✅ Session closed. Payout: ${payout} USDC`);
-  } catch (err) {
-    console.error('❌ Failed to close session:', err);
-    alert(`❌ Failed to close session:\n${err.message}`);
-  }
-};
+    try {
+      const result = await closeApplicationSession(appSessionId, participantA, participantB, total_amount - payout, payout);
+      console.log('✅ Session close result:', result);
+      alert(`✅ Session closed. Payout: ${payout} USDC`);
+    } catch (err) {
+      console.error('❌ Failed to close session:', err);
+      alert(`❌ Failed to close session:\n${err.message}`);
+    }
+  };
 
   const connectMetamask = async () => {
     console.log('[MetaMask] Checking for Ethereum provider…');
@@ -265,10 +192,8 @@ const handleCloseSession = async () => {
         </p>
       )}
 
-
       <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
       {freq && <p>Dominant frequency: {freq} Hz</p>}
-
 
       <StatusPanel
         status={status}
