@@ -1,6 +1,6 @@
 // src/hooks/useApplicationSession.js
 import { useCallback } from 'react';
-import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { createAppSessionMessage, createCloseAppSessionMessage } from '@erc7824/nitrolite';
 
 const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
 
@@ -49,10 +49,16 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
 
                 if (message.res?.[1] === 'create_app_session') {
                   ws.removeEventListener('message', handleMessage);
+                  clearTimeout(timeout);
                   log('✅ App session response received');
-                  resolve(message.res[2]);
-                  //stringify and store to local storage
                   localStorage.setItem('app_session_response', JSON.stringify(message.res[2]));
+                  const sessionId = message.res?.[2]?.[0]?.app_session_id;
+                  if (sessionId) {
+                    localStorage.setItem('app_session_id', sessionId);
+                    log('💾 Stored app_session_id in localStorage:', sessionId);
+}
+
+                  resolve(message.res[2]);
                 }
               } catch (err) {
                 log('❌ Message parsing failed:', err);
@@ -63,7 +69,7 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
             ws.addEventListener('message', handleMessage);
             ws.send(payload);
 
-            setTimeout(() => {
+            const timeout = setTimeout(() => {
               ws.removeEventListener('message', handleMessage);
               log('⏰ App session creation timeout');
               reject(new Error('App session creation timeout'));
@@ -92,5 +98,59 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
     [ws, sessionSignerFn, sessionAddr]
   );
 
-  return { createApplicationSession };
+  const closeApplicationSession = useCallback(
+    async (appSessionId, participantA, participantB, amountB = '1000000') => {
+      log('📦 Closing app session:', appSessionId);
+
+      const allocations = [
+        { participant: participantA, asset: 'usdc', amount: '0' },
+        { participant: participantB, asset: 'usdc', amount: amountB },
+      ];
+
+      try {
+        const signedMessage = await createCloseAppSessionMessage(sessionSignerFn, [
+          { app_session_id: appSessionId, allocations }
+        ]);
+
+        log('🚀 Sending close_app_session message:', signedMessage);
+
+        return new Promise((resolve, reject) => {
+          const handleMessage = (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              log('📨 Received message from WS:', message);
+
+              if (message.res?.[1] === 'close_app_session') {
+                ws.removeEventListener('message', handleMessage);
+                clearTimeout(timeout);
+                localStorage.removeItem('app_session_id');
+                log('✅ App session closed successfully:', message.res[2]);
+                resolve(message.res[2]);
+              }
+            } catch (err) {
+              log('❌ Error parsing close response:', err);
+            }
+          };
+
+          ws.addEventListener('message', handleMessage);
+          ws.send(signedMessage);
+
+          const timeout = setTimeout(() => {
+            ws.removeEventListener('message', handleMessage);
+            log('⏰ Close session timeout');
+            reject(new Error('Close session timeout'));
+          }, 10000);
+        });
+      } catch (err) {
+        log('❌ Failed to close app session:', err);
+        return { success: false, error: err.message };
+      }
+    },
+    [ws, sessionSignerFn]
+  );
+
+  return {
+    createApplicationSession,
+    closeApplicationSession,
+  };
 }

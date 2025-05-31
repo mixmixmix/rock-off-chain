@@ -24,15 +24,18 @@ export default function ChannelList({ channels, balances }) {
 
           <div>
             <strong>Ledger Balances:</strong>
-            {(balances[channel.participant] && balances[channel.participant].length > 0) ? (
-              <ul>
-                {balances[channel.participant].map((bal, i) => (
-                  <li key={i}>{bal.asset}: {bal.amount}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No ledger balances available.</p>
-            )}
+            <ul>
+              {Object.entries(balances).map(([addr, balList]) => (
+                <li key={addr}>
+                  <code>{addr}</code>
+                  <ul>
+                    {balList.map((bal, i) => (
+                      <li key={i}>{bal.asset}: {bal.amount}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       ))}

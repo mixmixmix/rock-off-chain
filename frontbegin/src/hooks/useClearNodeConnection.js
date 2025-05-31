@@ -11,6 +11,7 @@ import { getAddress, keccak256, id, getBytes } from 'ethers';
 
 const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
 
+const myaccs = ['0x9d50c60853822e27Ac1a5E35B2903b055d7953C9','0x656347DCa3bF0c127C8E4A93625f27b2367705a0'];
 export function useClearNodeConnection({
   wallet,
   walletClient,
@@ -29,6 +30,7 @@ export function useClearNodeConnection({
   const [_, forceRender] = useState(0);
 
   const myExpire = BigInt(Math.floor(Date.now() / 1000) + 3600);
+  const requestMap = new Map(); // requestId -> participant
 
   const channelMessageSigner = useCallback(async (payload) => {
     const msg = JSON.stringify(payload);
@@ -100,9 +102,12 @@ export function useClearNodeConnection({
     };
 
     const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(channelMessageSigner, '0x9d50c60853822e27Ac1a5E35B2903b055d7953C9');
+      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
+      const parsed = JSON.parse(message);
+      const requestId = parsed.req?.[0];
+      if (requestId) requestMap.set(requestId, participant);
       socket.send(message);
-      log('📤 Sent get_ledger_balances for:', '0x9d50c60853822e27Ac1a5E35B2903b055d7953C9');
+      log('📤 Sent get_ledger_balances for:', participant);
     };
 
     socket.onopen = async () => {
@@ -145,16 +150,23 @@ export function useClearNodeConnection({
           const channelsList = message.res?.[2]?.[0] || [];
           setChannels(channelsList);
           log('📡 Received channels:', channelsList);
-          for (const channel of channelsList) {
-            await requestLedgerBalances(channel.participant);
+          for (const account of myaccs) {
+            log('🔍 Requesting ledger balances for:', account);
+            await requestLedgerBalances(account);
           }
         } else if (topic === 'get_ledger_balances') {
-          const participant = message.res?.[2]?.[0]?.participant;
-          const result = message.res?.[2] || [];
-          setBalances(prev => ({ ...prev, [participant]: result }));
-          log('💰 Ledger balances for', participant, ':', result);
-        }
-      } catch (err) {
+          const requestId = message.res?.[0];
+          const result = message.res?.[2]?.[0] || [];
+          const participant = requestMap.get(requestId);
+
+          if (participant && myaccs.includes(participant)) {
+            setBalances(prev => ({ ...prev, [participant]: result }));
+            requestMap.delete(requestId);
+            log('💰 Ledger balances for', participant, ':', result);
+          } else {
+            log('⚠️ Ignored ledger balance for non-matching participant:', participant);
+          }
+        }      } catch (err) {
         setError('Message handling error: ' + err.message);
         log('❌ Message handling error:', err);
       }

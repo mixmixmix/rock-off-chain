@@ -1,6 +1,5 @@
 // File: src/App.jsx
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ethers, getAddress } from 'ethers';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -23,6 +22,8 @@ export default function App() {
 
   const wallet = privateKeyToAccount(privateKey);
   const walletAddress = getAddress(wallet.address);
+  const participantA = walletAddress;
+  const participantB = '0x656347DCa3bF0c127C8E4A93625f27b2367705a0';
 
   const walletClient = createWalletClient({
     transport: http(rpcUrl),
@@ -48,15 +49,13 @@ export default function App() {
     AUTH_TYPES
   });
 
-  const { createApplicationSession } = useApplicationSession(
-    ws,
-    sessionSigner?.sign,
-    sessionSigner?.address
-  );
-  const handleSessionCreate = async () => {
-    const participantB = '0x656347DCa3bF0c127C8E4A93625f27b2367705a0';
-    const amount = '0.0001';
+  const {
+    createApplicationSession,
+    closeApplicationSession
+  } = useApplicationSession(ws, sessionSigner?.sign, sessionSigner?.address);
 
+  const handleSessionCreate = async () => {
+    const amount = '0.0001';
     try {
       const result = await createApplicationSession(participantB, amount);
       if (result.success && result.app_session_id) {
@@ -68,6 +67,50 @@ export default function App() {
       }
     } catch (err) {
       alert(`❌ Unexpected error:\n${err.message}`);
+    }
+  };
+
+  const rollDice = () => {
+    const result = Math.floor(Math.random() * 6) + 1;
+    console.log(`🎲 Dice rolled: ${result}`);
+
+    const appSessionId = localStorage.getItem('app_session_id');
+    if (!appSessionId) {
+      console.warn('❌ No app session ID in localStorage');
+      return;
+    }
+
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        req: [
+          Date.now(),
+          "app_action",
+          [{ app_session_id: appSessionId, action: "dice_roll", value: result }],
+          Date.now()
+        ]
+      }));
+      console.log('📤 Sent dice_roll action to ClearNode');
+    } else {
+      console.warn('❌ WebSocket is not open');
+    }
+  };
+
+  const handleCloseSession = async () => {
+    console.log('📦 Trying to close session...');
+    const appSessionId = localStorage.getItem('app_session_id');
+    console.log('appSessionId:', appSessionId);
+    if (!appSessionId) {
+      console.warn('❌ No app session ID in localStorage');
+      return;
+    }
+    try {
+      const amount = '0.0001'; // Adjust the amount as needed
+      const result = await closeApplicationSession(appSessionId, participantA, participantB, amount);
+      console.log('✅ Session close result:', result);
+      alert('✅ Session closed.');
+    } catch (err) {
+      console.error('❌ Failed to close session:', err);
+      alert(`❌ Failed to close session:\n${err.message}`);
     }
   };
 
@@ -97,6 +140,8 @@ export default function App() {
           }}>
             🔁 Reset Session Key
           </button>
+          <button onClick={rollDice}>🎲 Roll Dice</button>
+          <button onClick={handleCloseSession}>❌ Close Session</button>
         </>
       )}
 
