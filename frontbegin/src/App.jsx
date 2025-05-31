@@ -1,206 +1,87 @@
 // File: src/App.jsx
-import { useEffect, useState } from 'react';
-import {
-  createAuthRequestMessage,
-  createAuthVerifyMessage,
-  createGetChannelsMessage,
-  createGetLedgerBalancesMessage
-} from '@erc7824/nitrolite';
+import React from 'react';
+import { useState } from 'react';
 import { ethers, getAddress } from 'ethers';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 
-const getAuthDomain = () => ({
-  name: 'Test App Mi',
-});
+import { getAuthDomain, AUTH_TYPES } from './utils/constants';
+import { useClearNodeConnection } from './hooks/useClearNodeConnection';
+import { useApplicationSession } from './hooks/useApplicationSession';
+import StatusPanel from './components/StatusPanel';
+import ChannelList from './components/ChannelList';
 
-const AUTH_TYPES = {
-  Policy: [
-    { name: 'challenge', type: 'string' },
-    { name: 'scope', type: 'string' },
-    { name: 'wallet', type: 'address' },
-    { name: 'application', type: 'address' },
-    { name: 'participant', type: 'address' },
-    { name: 'expire', type: 'uint256' },
-    { name: 'allowances', type: 'Allowance[]' },
-  ],
-  Allowance: [
-    { name: 'asset', type: 'string' },
-    { name: 'amount', type: 'uint256' },
-  ],
-};
+export default function App() {
+  const privateKey = import.meta.env.VITE_PRIVATE_KEY;
+  const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
+  const [connected, setConnected] = useState(false);
 
-function App() {
-  const [status, setStatus] = useState('disconnected');
-  const [channels, setChannels] = useState([]);
-  const [balances, setBalances] = useState({});
-  const [error, setError] = useState(null);
-  const [ws, setWs] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  if (!privateKey || !rpcUrl) {
+    return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
+  }
 
-  const connect = () => {
-    const privateKey = import.meta.env.VITE_PRIVATE_KEY;
-    const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
-    if (!privateKey || !rpcUrl) {
-      setError('Missing PRIVATE_KEY or RPC URL in .env');
-      return;
+  const wallet = privateKeyToAccount(privateKey);
+  const walletAddress = getAddress(wallet.address);
+
+  const walletClient = createWalletClient({
+    transport: http(rpcUrl),
+    chain: polygon,
+    account: wallet,
+  });
+
+  const {
+    ws,
+    status,
+    isAuthenticated,
+    error,
+    channels,
+    balances,
+    connect,
+    signer
+  } = useClearNodeConnection({
+    wallet,
+    walletClient,
+    walletAddress,
+    getAuthDomain,
+    AUTH_TYPES
+  });
+
+  const { createApplicationSession } = useApplicationSession(ws, signer, walletAddress);
+
+  const handleSessionCreate = async () => {
+    const participantB = prompt('Enter other participant address:');
+    const amount = prompt('Enter amount (as string):');
+    const result = await createApplicationSession(participantB, amount);
+    if (result.success) {
+      alert(`Session created${result.app_session_id ? `: ${result.app_session_id}` : ''}`);
+    } else {
+      alert(`Failed to create session: ${result.error}`);
     }
-
-    const wallet = privateKeyToAccount(privateKey);
-    const walletAddress = getAddress(wallet.address);
-    const myExpire = BigInt(Math.floor(Date.now() / 1000) + 3600);
-
-    const walletClient = createWalletClient({
-      transport: http(rpcUrl),
-      chain: polygon,
-      account: wallet,
-    });
-
-    const socket = new WebSocket('wss://clearnet.yellow.com/ws');
-    let clearNodeJwt = '';
-
-    const eip712MessageSigner = async (rawData) => {
-      const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-      const challenge = parsed?.[2]?.[0]?.challenge;
-      if (!challenge) throw new Error('Missing challenge in ClearNode message');
-
-      const message = {
-        challenge,
-        scope: 'console',
-        wallet: walletAddress,
-        application: walletAddress,
-        participant: walletAddress,
-        expire: String(myExpire),
-        allowances: [],
-      };
-
-      return await walletClient.signTypedData({
-        account: walletClient.account,
-        domain: getAuthDomain(),
-        types: AUTH_TYPES,
-        primaryType: 'Policy',
-        message,
-      });
-    };
-
-    const messageSigner = async (payload) => {
-      const msg = JSON.stringify(payload);
-      return await walletClient.signMessage({
-        account: walletClient.account,
-        message: msg
-      });
-    };
-
-    const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(
-        messageSigner,
-        participant
-      );
-      socket.send(message);
-    };
-
-    socket.onopen = async () => {
-      setStatus('connected');
-      const authRequest = await createAuthRequestMessage({
-        wallet: wallet.address,
-        participant: wallet.address,
-        app_name: getAuthDomain().name,
-        expire: String(myExpire),
-        scope: 'console',
-        application: wallet.address,
-        allowances: [],
-      });
-      socket.send(authRequest);
-    };
-
-    socket.onmessage = async (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        const topic = message.res?.[1];
-
-        if (topic === 'auth_challenge') {
-          const authVerifyMsg = await createAuthVerifyMessage(
-            eip712MessageSigner,
-            event.data
-          );
-          socket.send(authVerifyMsg);
-        } else if (topic === 'auth_verify') {
-          clearNodeJwt = message.res?.[2]?.[0]?.jwt_token || '';
-          setIsAuthenticated(true);
-          const getChannelsMsg = await createGetChannelsMessage(
-            messageSigner,
-            wallet.address
-          );
-          socket.send(getChannelsMsg);
-        } else if (topic === 'auth_failure') {
-          setError('Authentication failed: ' + message.res[2]);
-        } else if (topic === 'get_channels') {
-          const channelsList = message.res?.[2]?.[0] || [];
-          setChannels(channelsList);
-          channelsList.forEach(channel => {
-            requestLedgerBalances(channel.participant);
-          });
-        } else if (topic === 'get_ledger_balances') {
-          const participant = message.res?.[2]?.[0]?.participant;
-          const result = message.res?.[2] || [];
-          setBalances(prev => ({ ...prev, [participant]: result }));
-        }
-      } catch (err) {
-        setError('Message handling error: ' + err.message);
-      }
-    };
-
-    socket.onerror = (err) => setError('WebSocket error: ' + err.message);
-    socket.onclose = () => setStatus('disconnected');
-
-    setWs(socket);
   };
 
   return (
     <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
       <h2>ClearNode Channels</h2>
-      <p>Status: {status}</p>
-      <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
 
-      <button onClick={connect} disabled={status === 'connected'}>
-        Connect to ClearNode
-      </button>
+      <StatusPanel
+        status={status}
+        isAuthenticated={isAuthenticated}
+        error={error}
+        onConnect={() => {
+          connect();
+          setConnected(true);
+        }}
+        canConnect={!connected}
+      />
 
-      <h3>Channels</h3>
-      {channels.length === 0 && <p>No channels found</p>}
-      {channels.map((channel, index) => (
-        <div key={index} style={{ borderBottom: '1px solid #ccc', marginBottom: '1rem' }}>
-          <p><strong>ID:</strong> {channel.channel_id}</p>
-          <p><strong>Status:</strong> {channel.status}</p>
-          <p><strong>Participant:</strong> {channel.participant}</p>
-          <p><strong>Token:</strong> {channel.token}</p>
-          <p><strong>Amount:</strong> {channel.amount}</p>
-          <p><strong>Chain ID:</strong> {channel.chain_id}</p>
-          <p><strong>Adjudicator:</strong> {channel.adjudicator}</p>
-          <p><strong>Challenge:</strong> {channel.challenge}</p>
-          <p><strong>Nonce:</strong> {channel.nonce}</p>
-          <p><strong>Version:</strong> {channel.version}</p>
-          <p><strong>Created:</strong> {channel.created_at}</p>
-          <p><strong>Updated:</strong> {channel.updated_at}</p>
+      {isAuthenticated && (
+        <button onClick={handleSessionCreate} style={{ marginBottom: '1rem' }}>
+          Create Application Session
+        </button>
+      )}
 
-          <div>
-            <strong>Ledger Balances:</strong>
-            {(balances[channel.participant] && balances[channel.participant].length > 0) ? (
-              <ul>
-                {balances[channel.participant].map((bal, i) => (
-                  <li key={i}>{bal.asset}: {bal.amount}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No ledger balances available.</p>
-            )}
-          </div>
-        </div>
-      ))}
+      <ChannelList channels={channels} balances={balances} />
     </div>
   );
 }
-
-export default App;
