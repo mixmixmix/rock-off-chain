@@ -7,6 +7,7 @@ export function useAudioRecorder() {
   const chunks = useRef([]);
   const [freq, setFreq] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [monoData, setMonoData] = useState(null);
 
   const audioToggle = async () => {
     if (!recording) {
@@ -32,15 +33,17 @@ export function useAudioRecorder() {
           const audioBuf = await ctx.decodeAudioData(arrayBuf);
           const mono = audioBuf.getChannelData(0);
 
+          setMonoData(mono.slice(0)); // copy for visualisation
+
           console.log('📊 Running analysis with Essentia.js...');
           const essentia = new Essentia(EssentiaWASM);
           const vfFrame = essentia.arrayToVector(mono);
 
           const { pitch } = essentia.PitchYinFFT(vfFrame);
           setFreq(Math.round(pitch));
-
           console.log(`🎼 Detected pitch: ${pitch} Hz`);
-          vfFrame.delete();
+
+          vfFrame.delete(); // free WASM memory
         };
 
         console.log('▶️ Starting recording...');
@@ -63,6 +66,7 @@ export function useAudioRecorder() {
   return {
     freq,
     recording,
-    audioToggle
+    audioToggle,
+    monoData,
   };
 }
