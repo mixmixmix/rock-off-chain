@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef  } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
+import { Line } from 'react-chartjs-2';
 
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -14,16 +15,27 @@ import ChannelList from './components/ChannelList';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useAudioAnalysis } from './hooks/useAudioAnalysis';
 
+import { freqToNote, chartData, chartOptions } from './utils/piano';
+import {
+  Chart as ChartJS,
+  LineElement,
+  CategoryScale,
+  LogarithmicScale,
+  PointElement,
+  Title
+} from 'chart.js';
+
+ChartJS.register(LineElement, CategoryScale, LogarithmicScale, PointElement, Title);
+
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
   const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
   const [connected, setConnected] = useState(false);
   const [participantB, setParticipantB] = useState(null);
 
-  //AUDIO
   const canvasRef = useRef(null);
-  const { recording, audioToggle, monoData } = useAudioRecorder();
-  const { freq } = useAudioAnalysis(monoData, canvasRef);
+  const { recording, audioToggle, monoData } = useAudioRecorder(canvasRef);
+  const { freqSeries } = useAudioAnalysis(monoData);
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
@@ -64,6 +76,7 @@ export default function App() {
   } = useApplicationSession(ws, sessionSigner?.sign, sessionSigner?.address);
 
   const total_amount = '0.0001';
+
   const handleSessionCreate = async () => {
     try {
       const result = await createApplicationSession(participantB, total_amount);
@@ -142,48 +155,20 @@ export default function App() {
   };
 
   const connectMetamask = async () => {
-    console.log('[MetaMask] Checking for Ethereum provider…');
     if (!window.ethereum) {
-      console.error('[MetaMask] No window.ethereum found. Prompting install.');
       alert('Install MetaMask');
       return;
     }
 
-    console.log('[MetaMask] Provider found. Creating BrowserProvider…');
     const provider = new BrowserProvider(window.ethereum);
-
-    console.log('[MetaMask] Requesting accounts…');
     try {
       await provider.send('eth_requestAccounts', []);
+      const signer = await provider.getSigner();
+      const addr = getAddress(await signer.getAddress());
+      setParticipantB(addr);
     } catch (err) {
-      console.error('[MetaMask] Account request rejected:', err);
-      return;
+      console.error('[MetaMask] Error:', err);
     }
-    console.log('[MetaMask] Accounts granted.');
-
-    console.log('[MetaMask] Getting signer…');
-    let signer;
-    try {
-      signer = await provider.getSigner();
-    } catch (err) {
-      console.error('[MetaMask] Failed to get signer:', err);
-      return;
-    }
-    console.log('[MetaMask] Signer acquired.');
-
-    console.log('[MetaMask] Retrieving address…');
-    let addr;
-    try {
-      addr = await signer.getAddress();
-      addr = getAddress(addr);
-    } catch (err) {
-      console.error('[MetaMask] Failed to fetch address:', err);
-      return;
-    }
-    console.log('[MetaMask] Address retrieved:', addr);
-
-    setParticipantB(addr);
-    console.log('[MetaMask] participantB state set to:', addr);
   };
 
   return (
@@ -197,7 +182,6 @@ export default function App() {
       )}
 
       <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
-      {freq && <p>Dominant frequency: {freq} Hz</p>}
       <canvas
         ref={canvasRef}
         width={500}
@@ -205,6 +189,10 @@ export default function App() {
         style={{ border: '1px solid #ccc', margin: '1rem 0' }}
       />
 
+      <div style={{ width: '90%', margin: '2rem auto' }}>
+        <h2>Dominant Frequency Time Series</h2>
+        <Line data={chartData(freqSeries)} options={chartOptions} />
+      </div>
 
       <StatusPanel
         status={status}
