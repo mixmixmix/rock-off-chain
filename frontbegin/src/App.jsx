@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import {
   createAuthRequestMessage,
   createAuthVerifyMessage,
-  createGetChannelsMessage
+  createGetChannelsMessage,
+  createGetLedgerBalancesMessage
 } from '@erc7824/nitrolite';
 import { ethers, getAddress } from 'ethers';
 import { createWalletClient, http } from 'viem';
@@ -33,6 +34,7 @@ const AUTH_TYPES = {
 function App() {
   const [status, setStatus] = useState('disconnected');
   const [channels, setChannels] = useState([]);
+  const [balances, setBalances] = useState({});
   const [error, setError] = useState(null);
   const [ws, setWs] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -90,6 +92,14 @@ function App() {
       });
     };
 
+    const requestLedgerBalances = async (participant) => {
+      const message = await createGetLedgerBalancesMessage(
+        messageSigner,
+        participant
+      );
+      socket.send(message);
+    };
+
     socket.onopen = async () => {
       setStatus('connected');
       const authRequest = await createAuthRequestMessage({
@@ -126,7 +136,15 @@ function App() {
         } else if (topic === 'auth_failure') {
           setError('Authentication failed: ' + message.res[2]);
         } else if (topic === 'get_channels') {
-          setChannels(message.res?.[2]?.[0] || []);
+          const channelsList = message.res?.[2]?.[0] || [];
+          setChannels(channelsList);
+          channelsList.forEach(channel => {
+            requestLedgerBalances(channel.participant);
+          });
+        } else if (topic === 'get_ledger_balances') {
+          const participant = message.res?.[2]?.[0]?.participant;
+          const result = message.res?.[2] || [];
+          setBalances(prev => ({ ...prev, [participant]: result }));
         }
       } catch (err) {
         setError('Message handling error: ' + err.message);
@@ -151,14 +169,36 @@ function App() {
       </button>
 
       <h3>Channels</h3>
-      <ul>
-        {channels.length === 0 && <li>No channels found</li>}
-        {channels.map((channel, index) => (
-          <li key={index}>
-            <strong>ID:</strong> {channel.channel_id} — <strong>Status:</strong> {channel.status}
-          </li>
-        ))}
-      </ul>
+      {channels.length === 0 && <p>No channels found</p>}
+      {channels.map((channel, index) => (
+        <div key={index} style={{ borderBottom: '1px solid #ccc', marginBottom: '1rem' }}>
+          <p><strong>ID:</strong> {channel.channel_id}</p>
+          <p><strong>Status:</strong> {channel.status}</p>
+          <p><strong>Participant:</strong> {channel.participant}</p>
+          <p><strong>Token:</strong> {channel.token}</p>
+          <p><strong>Amount:</strong> {channel.amount}</p>
+          <p><strong>Chain ID:</strong> {channel.chain_id}</p>
+          <p><strong>Adjudicator:</strong> {channel.adjudicator}</p>
+          <p><strong>Challenge:</strong> {channel.challenge}</p>
+          <p><strong>Nonce:</strong> {channel.nonce}</p>
+          <p><strong>Version:</strong> {channel.version}</p>
+          <p><strong>Created:</strong> {channel.created_at}</p>
+          <p><strong>Updated:</strong> {channel.updated_at}</p>
+
+          <div>
+            <strong>Ledger Balances:</strong>
+            {(balances[channel.participant] && balances[channel.participant].length > 0) ? (
+              <ul>
+                {balances[channel.participant].map((bal, i) => (
+                  <li key={i}>{bal.asset}: {bal.amount}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No ledger balances available.</p>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
