@@ -12,6 +12,7 @@
   "dependencies": {
     "@erc7824/nitrolite": "^0.2.6",
     "chart.js": "^4.4.9",
+    "chartjs-plugin-annotation": "^3.1.0",
     "essentia.js": "^0.1.3",
     "ethers": "^6.14.3",
     "fft.js": "^4.0.4",
