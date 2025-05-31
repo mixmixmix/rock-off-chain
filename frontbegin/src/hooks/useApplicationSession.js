@@ -16,7 +16,7 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
         log('📍 Amount:', amount);
 
         const appDefinition = {
-          protocol: 'nitroliterpc',
+          protocol: 'rock0ffChain', // use my app name
           participants: [participantA, participantB],
           weights: [100, 0],
           quorum: 100,
@@ -99,11 +99,12 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
   );
 
   const closeApplicationSession = useCallback(
-    async (appSessionId, participantA, participantB, amountB = '1000000') => {
+    async (appSessionId, participantA, participantB, amountA, amountB) => {
       log('📦 Closing app session:', appSessionId);
 
+      log('We are giving to patricipant b:', amountB);
       const allocations = [
-        { participant: participantA, asset: 'usdc', amount: '0' },
+        { participant: participantA, asset: 'usdc', amount: amountA },
         { participant: participantB, asset: 'usdc', amount: amountB },
       ];
 

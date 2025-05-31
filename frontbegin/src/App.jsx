@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 
 import { createWalletClient, http } from 'viem';
@@ -40,7 +40,8 @@ export default function App() {
     balances,
     connect,
     walletAddress: resolvedAddress,
-    sessionSigner
+    sessionSigner,
+    requestLedgerBalances
   } = useClearNodeConnection({
     wallet,
     walletClient,
@@ -54,10 +55,10 @@ export default function App() {
     closeApplicationSession
   } = useApplicationSession(ws, sessionSigner?.sign, sessionSigner?.address);
 
+    const total_amount = '0.0001';
   const handleSessionCreate = async () => {
-    const amount = '0.0001';
     try {
-      const result = await createApplicationSession(participantB, amount);
+      const result = await createApplicationSession(participantB, total_amount);
       if (result.success && result.app_session_id) {
         alert(`✅ Session created!\nSession ID: ${result.app_session_id}`);
         localStorage.setItem('app_session_id', result.app_session_id);
@@ -70,6 +71,33 @@ export default function App() {
       alert(`❌ Unexpected error:\n${err.message}`);
     }
   };
+
+useEffect(() => {
+  if (!ws || !sessionSigner || !requestLedgerBalances) return;
+
+  const interval = setInterval(async () => {
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    const ts1 = Date.now();
+    const ts2 = Date.now();
+    const payload = [ts1, "ping", [], ts2];
+    const signature = await sessionSigner.sign(payload);
+
+    ws.send(JSON.stringify({
+      req: payload,
+      sig: [signature]
+    }));
+    console.log('📡 Sent signed ping');
+
+    // 💰 Request ledger balance every ping
+    const account = sessionSigner.address;
+    await requestLedgerBalances(account);
+    console.log(`[Ledger] Requested balances for ${account}`);
+  }, 10000);
+
+  return () => clearInterval(interval);
+}, [ws, sessionSigner, requestLedgerBalances]);
+
 
 const rollDice = () => {
   const result = Math.floor(Math.random() * 6) + 1;
@@ -100,7 +128,7 @@ const handleCloseSession = async () => {
   console.log(`💰 Calculated payout to B: ${payout} USDC`);
 
   try {
-    const result = await closeApplicationSession(appSessionId, participantA, participantB, payout);
+    const result = await closeApplicationSession(appSessionId, participantA, participantB, total_amount-payout,  payout);
     console.log('✅ Session close result:', result);
     alert(`✅ Session closed. Payout: ${payout} USDC`);
   } catch (err) {

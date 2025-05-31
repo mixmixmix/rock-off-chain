@@ -40,6 +40,17 @@ export function useClearNodeConnection({
     });
   }, [walletClient]);
 
+
+    const requestLedgerBalances = async (participant) => {
+      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
+      const parsed = JSON.parse(message);
+      const requestId = parsed.req?.[0];
+      if (requestId) requestMap.set(requestId, participant);
+      ws.send(message);
+      log('📤 Sent get_ledger_balances for:', participant);
+    };
+
+
   const connect = useCallback(() => {
     const socket = new WebSocket('wss://clearnet.yellow.com/ws');
     setWs(socket);
@@ -99,15 +110,6 @@ export function useClearNodeConnection({
         primaryType: 'Policy',
         message,
       });
-    };
-
-    const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
-      const parsed = JSON.parse(message);
-      const requestId = parsed.req?.[0];
-      if (requestId) requestMap.set(requestId, participant);
-      socket.send(message);
-      log('📤 Sent get_ledger_balances for:', participant);
     };
 
     socket.onopen = async () => {
@@ -195,6 +197,7 @@ export function useClearNodeConnection({
     walletAddress,
     signer: sessionSigner,
     sessionSigner,
-    sessionAddress
+    sessionAddress,
+    requestLedgerBalances //says it is undefined!
   };
 }
