@@ -91,6 +91,9 @@ export function chartData(freqSeries) {
   const labels = freqSeries.map((_, i) => (i * 512 / 44100).toFixed(2));
   console.log('Time labels:', labels);
 
+  const noteSeries = filtered.map(freqToNote);
+  console.log('Musical notes played:', noteSeries);
+
   const datasets = [
     {
       label: 'Smoothed Dominant Frequency (Hz)',
@@ -109,11 +112,12 @@ export function chartData(freqSeries) {
   return {
     labels,
     datasets,
-    commonFreqs, // return this for annotation
+    commonFreqs,
+    noteSeries,
   };
 }
 
-// Dynamic Chart.js options with annotations
+// Dynamic Chart.js options with annotations and right-hand note axis
 export function generateChartOptions(commonFreqs) {
   const highlightColors = ['#fbaacb', '#56b3c3', '#ffb547', '#b2b2b2', '#6c6c6c'];
 
@@ -123,8 +127,21 @@ export function generateChartOptions(commonFreqs) {
         type: 'logarithmic',
         min: 100,
         max: 2000,
+        position: 'left',
         ticks: {
           callback: (val) => `${val} Hz`,
+        },
+      },
+      yNote: {
+        type: 'logarithmic',
+        min: 100,
+        max: 2000,
+        position: 'right',
+        grid: {
+          drawOnChartArea: false,
+        },
+        ticks: {
+          callback: (val) => freqToNote(val),
         },
       },
     },

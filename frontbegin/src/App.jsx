@@ -122,6 +122,7 @@ export default function App() {
   const rollDice = () => {
     const result = Math.floor(Math.random() * 6) + 1;
     console.log(`🎲 Dice rolled: ${result}`);
+    console.log('🎼 Notes:', noteSeries);
     localStorage.setItem('last_dice_result', result.toString());
 
     const appSessionId = localStorage.getItem('app_session_id');
@@ -172,7 +173,7 @@ export default function App() {
     }
   };
 
-  const { labels, datasets, commonFreqs } = chartData(freqSeries);
+  const { labels, datasets, commonFreqs, noteSeries } = chartData(freqSeries);
   const options = generateChartOptions(commonFreqs);
 
   return (
