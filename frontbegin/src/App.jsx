@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 
 import { createWalletClient, http } from 'viem';
@@ -11,11 +11,81 @@ import { useApplicationSession } from './hooks/useApplicationSession';
 import StatusPanel from './components/StatusPanel';
 import ChannelList from './components/ChannelList';
 
+import Essentia from 'essentia.js/dist/essentia.js-core.es.js';
+import { EssentiaWASM } from 'essentia.js/dist/essentia-wasm.es.js';
+
+
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
   const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
   const [connected, setConnected] = useState(false);
   const [participantB, setParticipantB] = useState(null);
+
+  //audio stuff
+const mediaRec = useRef(null);
+const chunks = useRef([]);
+const [freq, setFreq] = useState(null);
+const [recording, setRecording] = useState(false);
+
+
+const audioToggle = async () => {
+  if (!recording) {
+    try {
+      // ─── start recording ──────────────────────────────────────────────────────
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      mediaRec.current = new MediaRecorder(stream);
+      mediaRec.current.ondataavailable = e => chunks.current.push(e.data);
+
+      mediaRec.current.onstop = async () => {
+        // turn the buffers we collected into a single WebM blob
+        const blob = new Blob(chunks.current, { type: "audio/webm" });
+        chunks.current = [];
+
+        // decode it so we can run analysis
+        const arrayBuf = await blob.arrayBuffer();
+        const ctx      = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuf = await ctx.decodeAudioData(arrayBuf);
+        const mono     = audioBuf.getChannelData(0);        // Float32Array
+
+        console.log("hello dolly");
+        console.log(mono.constructor.name, mono.length);
+
+        // ─── Essentia.js (WASM) analysis ───────────────────────────────────────
+        const essentia = new Essentia(EssentiaWASM);
+        const vfFrame  = essentia.arrayToVector(mono);
+
+        console.log("hello dolly2");
+        console.log(vfFrame.constructor.name, vfFrame.length);
+
+        // quick smoke-test
+        const e  = new Essentia(EssentiaWASM);
+        const vf = e.arrayToVector(new Float32Array([1, 2, 3]));
+        console.log(e.Mean(vf).mean); // => 2
+        vf.delete();                  // free the memory Essentia allocated
+
+        // actual pitch detection
+        const { pitch } = essentia.PitchYinFFT(vfFrame);
+        setFreq(Math.round(pitch));
+
+        vfFrame.delete();             // tidy up
+      };
+
+      mediaRec.current.start();
+      setRecording(true);
+    } catch (err) {
+      console.error("Could not start audio capture:", err);
+    }
+  } else {
+    // ─── stop recording ────────────────────────────────────────────────────────
+    if (mediaRec.current) {
+      mediaRec.current.stop();
+      mediaRec.current.stream.getTracks().forEach(t => t.stop());
+    }
+    setRecording(false);
+  }
+};
+
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
@@ -30,6 +100,9 @@ export default function App() {
     chain: polygon,
     account: wallet,
   });
+
+
+
 
   const {
     ws,
@@ -191,6 +264,11 @@ const handleCloseSession = async () => {
           🔗 Connected wallet: <code>{participantB}</code>
         </p>
       )}
+
+
+      <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
+      {freq && <p>Dominant frequency: {freq} Hz</p>}
+
 
       <StatusPanel
         status={status}
