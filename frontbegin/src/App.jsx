@@ -34,8 +34,10 @@ function App() {
   const [status, setStatus] = useState('disconnected');
   const [channels, setChannels] = useState([]);
   const [error, setError] = useState(null);
+  const [ws, setWs] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
+  const connect = () => {
     const privateKey = import.meta.env.VITE_PRIVATE_KEY;
     const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
     if (!privateKey || !rpcUrl) {
@@ -53,7 +55,7 @@ function App() {
       account: wallet,
     });
 
-    const ws = new WebSocket('wss://clearnet.yellow.com/ws');
+    const socket = new WebSocket('wss://clearnet.yellow.com/ws');
     let clearNodeJwt = '';
 
     const eip712MessageSigner = async (rawData) => {
@@ -88,7 +90,7 @@ function App() {
       });
     };
 
-    ws.onopen = async () => {
+    socket.onopen = async () => {
       setStatus('connected');
       const authRequest = await createAuthRequestMessage({
         wallet: wallet.address,
@@ -99,10 +101,10 @@ function App() {
         application: wallet.address,
         allowances: [],
       });
-      ws.send(authRequest);
+      socket.send(authRequest);
     };
 
-    ws.onmessage = async (event) => {
+    socket.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
         const topic = message.res?.[1];
@@ -112,14 +114,15 @@ function App() {
             eip712MessageSigner,
             event.data
           );
-          ws.send(authVerifyMsg);
+          socket.send(authVerifyMsg);
         } else if (topic === 'auth_verify') {
           clearNodeJwt = message.res?.[2]?.[0]?.jwt_token || '';
+          setIsAuthenticated(true);
           const getChannelsMsg = await createGetChannelsMessage(
             messageSigner,
             wallet.address
           );
-          ws.send(getChannelsMsg);
+          socket.send(getChannelsMsg);
         } else if (topic === 'auth_failure') {
           setError('Authentication failed: ' + message.res[2]);
         } else if (topic === 'get_channels') {
@@ -130,17 +133,23 @@ function App() {
       }
     };
 
-    ws.onerror = (err) => setError('WebSocket error: ' + err.message);
-    ws.onclose = () => setStatus('disconnected');
+    socket.onerror = (err) => setError('WebSocket error: ' + err.message);
+    socket.onclose = () => setStatus('disconnected');
 
-    return () => ws.close();
-  }, []);
+    setWs(socket);
+  };
 
   return (
     <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
       <h2>ClearNode Channels</h2>
       <p>Status: {status}</p>
+      <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+
+      <button onClick={connect} disabled={status === 'connected'}>
+        Connect to ClearNode
+      </button>
+
       <h3>Channels</h3>
       <ul>
         {channels.length === 0 && <li>No channels found</li>}
