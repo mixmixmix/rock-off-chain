@@ -94,6 +94,13 @@ export function chartData(freqSeries) {
   const noteSeries = filtered.map(freqToNote);
   console.log('Musical notes played:', noteSeries);
 
+  const topNotes = commonFreqs.map(f => ({
+    freq: f.freq,
+    note: freqToNote(f.freq),
+    proportion: f.proportion,
+  }));
+  console.log('Top notes:', topNotes);
+
   const datasets = [
     {
       label: 'Smoothed Dominant Frequency (Hz)',
@@ -104,7 +111,24 @@ export function chartData(freqSeries) {
       tension: 0.2,
       pointRadius: 2,
     },
-    ...horizontalLines(commonFreqs, highlightColors, freqSeries)
+    ...horizontalLines(commonFreqs, highlightColors, freqSeries),
+    {
+      label: 'Top Notes',
+      data: commonFreqs.map(f => ({ x: 0, y: f.freq })),
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      borderWidth: 0,
+      showLine: false,
+      backgroundColor: 'rgba(255,255,255,0.5)',
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const freq = ctx.raw.y;
+            return `${freq} Hz (${freqToNote(freq)})`;
+          }
+        }
+      }
+    }
   ];
 
   console.log('Final datasets:', datasets);
@@ -114,6 +138,7 @@ export function chartData(freqSeries) {
     datasets,
     commonFreqs,
     noteSeries,
+    topNotes,
   };
 }
 
