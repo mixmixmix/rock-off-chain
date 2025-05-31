@@ -15,7 +15,7 @@ import ChannelList from './components/ChannelList';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useAudioAnalysis } from './hooks/useAudioAnalysis';
 
-import { freqToNote, chartData, chartOptions } from './utils/piano';
+import { chartData, generateChartOptions } from './utils/piano';
 import {
   Chart as ChartJS,
   LineElement,
@@ -25,7 +25,8 @@ import {
   Title
 } from 'chart.js';
 
-ChartJS.register(LineElement, CategoryScale, LogarithmicScale, PointElement, Title);
+import annotationPlugin from 'chartjs-plugin-annotation';
+ChartJS.register(LineElement, CategoryScale, LogarithmicScale, PointElement, Title, annotationPlugin);
 
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
@@ -171,6 +172,9 @@ export default function App() {
     }
   };
 
+  const { labels, datasets, commonFreqs } = chartData(freqSeries);
+  const options = generateChartOptions(commonFreqs);
+
   return (
     <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
       <h2>ClearNode Channels</h2>
@@ -191,7 +195,7 @@ export default function App() {
 
       <div style={{ width: '90%', margin: '2rem auto' }}>
         <h2>Dominant Frequency Time Series</h2>
-        <Line data={chartData(freqSeries)} options={chartOptions} />
+        <Line data={{ labels, datasets }} options={options} />
       </div>
 
       <StatusPanel
