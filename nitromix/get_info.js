@@ -2,6 +2,8 @@ import 'dotenv/config';
 import {
   createAuthRequestMessage,
   createAuthVerifyMessage,
+  createGetChannelsMessage,
+  createGetLedgerBalancesMessage,
 } from '@erc7824/nitrolite';
 import { ethers, getAddress } from 'ethers';
 import WebSocket from 'ws';
@@ -83,6 +85,19 @@ ws.onopen = async () => {
   ws.send(authRequest);
 };
 
+const messageSigner = async (payload) => {
+  const msg = JSON.stringify(payload);
+  const digestHex = ethers.id(msg);
+  const digestBytes = ethers.getBytes(digestHex);
+
+  return await walletClient.signMessage({
+    account: walletClient.account,
+    message: msg
+  });
+};
+
+
+
 ws.onmessage = async (event) => {
   try {
     const message = JSON.parse(event.data);
@@ -96,10 +111,22 @@ ws.onmessage = async (event) => {
       ws.send(authVerifyMsg);
     } else if (topic === 'auth_verify') {
       clearNodeJwt = message.res?.[2]?.[0]?.jwt_token || '';
-      console.log('Authentication successful. JWT Token:', clearNodeJwt);
+      console.log('✅Authentication successful. JWT Token:', clearNodeJwt);
+      console.log('Requesting channel information...');
+
+      const getChannelsMsg = await createGetChannelsMessage(
+        messageSigner,
+        wallet.address
+      );
+
+      ws.send(getChannelsMsg);
     } else if (topic === 'auth_failure') {
       console.error('Authentication failed:', message.res[2]);
-    } else {
+    } else if (topic === 'get_channels') {
+      const channels = message.res?.[2]?.[0] || [];
+      console.log('📡 Channels:', channels);
+    }
+    else {
       console.log('Other message:', topic);
     }
   } catch (error) {
