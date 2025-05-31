@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef  } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 
 import { createWalletClient, http } from 'viem';
@@ -12,6 +12,7 @@ import StatusPanel from './components/StatusPanel';
 import ChannelList from './components/ChannelList';
 
 import { useAudioRecorder } from './hooks/useAudioRecorder';
+import { useAudioAnalysis } from './hooks/useAudioAnalysis';
 
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
@@ -19,7 +20,10 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [participantB, setParticipantB] = useState(null);
 
-  const { freq, recording, audioToggle } = useAudioRecorder();
+  //AUDIO
+  const canvasRef = useRef(null);
+  const { recording, audioToggle, monoData } = useAudioRecorder();
+  const { freq } = useAudioAnalysis(monoData, canvasRef);
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
@@ -194,6 +198,13 @@ export default function App() {
 
       <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
       {freq && <p>Dominant frequency: {freq} Hz</p>}
+      <canvas
+        ref={canvasRef}
+        width={500}
+        height={100}
+        style={{ border: '1px solid #ccc', margin: '1rem 0' }}
+      />
+
 
       <StatusPanel
         status={status}
