@@ -55,14 +55,15 @@ export function useClearNodeConnection({
     });
   }, [walletClient]);
 
-  const requestLedgerBalances = useCallback(async (participant) => {
-    const message = await createGetLedgerBalancesMessage(messageSigner, participant);
-    ws.send(message);
-  }, [messageSigner, ws]);
-
   const connect = useCallback(() => {
     const socket = new WebSocket('wss://clearnet.yellow.com/ws');
+    setWs(socket);
     let clearNodeJwt = '';
+
+    const requestLedgerBalances = async (participant) => {
+      const message = await createGetLedgerBalancesMessage(messageSigner, participant);
+      socket.send(message);
+    };
 
     socket.onopen = async () => {
       setStatus('connected');
@@ -96,7 +97,9 @@ export function useClearNodeConnection({
         } else if (topic === 'get_channels') {
           const channelsList = message.res?.[2]?.[0] || [];
           setChannels(channelsList);
-          channelsList.forEach(channel => requestLedgerBalances(channel.participant));
+          for (const channel of channelsList) {
+            await requestLedgerBalances(channel.participant);
+          }
         } else if (topic === 'get_ledger_balances') {
           const participant = message.res?.[2]?.[0]?.participant;
           const result = message.res?.[2] || [];
@@ -110,7 +113,6 @@ export function useClearNodeConnection({
     socket.onerror = (err) => setError('WebSocket error: ' + err.message);
     socket.onclose = () => setStatus('disconnected');
 
-    setWs(socket);
   }, [wallet, walletAddress, eip712MessageSigner, messageSigner, getAuthDomain]);
 
   return {

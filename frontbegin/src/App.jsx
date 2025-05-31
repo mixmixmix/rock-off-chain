@@ -52,11 +52,19 @@ export default function App() {
   const handleSessionCreate = async () => {
     const participantB = prompt('Enter other participant address:');
     const amount = prompt('Enter amount (as string):');
-    const result = await createApplicationSession(participantB, amount);
-    if (result.success) {
-      alert(`Session created${result.app_session_id ? `: ${result.app_session_id}` : ''}`);
-    } else {
-      alert(`Failed to create session: ${result.error}`);
+    alert('Sending session creation request...');
+    try {
+      const result = await createApplicationSession(participantB, amount);
+
+      if (result.success && result.app_session_id) {
+        alert(`✅ Session created!\nSession ID: ${result.app_session_id}`);
+      } else if (result.success) {
+        alert('Session creation request sent, but no session ID returned.');
+      } else {
+        alert(`❌ Failed to create session:\n${result.error}`);
+      }
+    } catch (err) {
+      alert(`❌ Unexpected error:\n${err.message}`);
     }
   };
 
