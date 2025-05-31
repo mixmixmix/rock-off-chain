@@ -33,14 +33,26 @@ export function useAudioRecorder(canvasRef) {
     const step = Math.ceil(data.length / width);
     console.log(`📏 Drawing with step: ${step}, data.length: ${data.length}, canvas.width: ${width}`);
 
+    // Calculate amplitude distribution
+    const amplitudes = [];
+    for (let i = 0; i < data.length; i += step) {
+      amplitudes.push(Math.abs(data[i] || 0));
+    }
+    amplitudes.sort((a, b) => a - b);
+    
+    // Use 95th percentile for scaling to allow some peaks to clip
+    const percentile95 = amplitudes[Math.floor(amplitudes.length * 0.95)];
+    const scaleFactor = (height/2) / percentile95;
+
     for (let i = 0; i < width; i++) {
       const sample = data[i * step] || 0;
-      const y = (1 - sample) * (height / 2);
+      // Scale the sample and allow clipping
+      const y = height/2 - sample * scaleFactor;
       ctx.lineTo(i, y);
     }
 
-    ctx.strokeStyle = '#007';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ffb547';
+    ctx.lineWidth = 2;
     ctx.stroke();
     console.log('✅ Waveform drawn.');
   };

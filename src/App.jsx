@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 import { Line } from 'react-chartjs-2';
+import bannerImage from './assets/banner.png';
+import './App.css';
 
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -178,59 +180,83 @@ export default function App() {
   const options = generateChartOptions(commonFreqs);
 
   return (
-    <div style={{ padding: '1rem', fontFamily: 'sans-serif' }}>
-      <h2>ClearNode Channels</h2>
-
-      {participantB && (
-        <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
-          🔗 Connected wallet: <code>{participantB}</code>
-        </p>
-      )}
-
-      <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
-      <canvas
-        ref={canvasRef}
-        width={500}
-        height={100}
-        style={{ border: '1px solid #ccc', margin: '1rem 0' }}
-      />
-
-      <div style={{ width: '90%', margin: '2rem auto' }}>
-        <h2>Dominant Frequency Time Series</h2>
-        <Line data={{ labels, datasets }} options={options} />
+    <div className="app-container">
+      <div className="banner">
+        <img src={bannerImage} alt="Banner" />
       </div>
-
-      <StatusPanel
-        status={status}
-        isAuthenticated={isAuthenticated}
-        error={error}
-        onConnect={() => {
-          connect();
-          setConnected(true);
-        }}
-        canConnect={!connected}
-      />
-
-      {isAuthenticated && sessionSigner && (
-        <>
-          <button onClick={handleSessionCreate} style={{ marginBottom: '1rem' }}>
-            Create Application Session
-          </button>
-          <button onClick={() => {
+      <div className="button-row">
+        <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
+        <button 
+          onClick={() => {
+            connect();
+            setConnected(true);
+          }}
+          disabled={connected}
+        >
+          Connect to ClearNode
+        </button>
+        <button 
+          onClick={handleSessionCreate}
+          disabled={!isAuthenticated || !sessionSigner}
+        >
+          Create Application Session
+        </button>
+        <button 
+          onClick={() => {
             localStorage.removeItem('clearnode_session_privkey');
             window.location.reload();
-          }}>
-            🔁 Reset Session Key
-          </button>
-          <button onClick={rollDice}>🎲 Roll Dice</button>
-          <button onClick={handleCloseSession}>❌ Close Session</button>
-          {!participantB && (
-            <button onClick={connectMetamask}>🔌 Connect MetaMask</button>
+          }}
+          disabled={!isAuthenticated || !sessionSigner}
+        >
+          🔁 Reset Session Key
+        </button>
+        <button 
+          onClick={rollDice}
+          disabled={!isAuthenticated || !sessionSigner}
+        >
+          🎲 Roll Dice
+        </button>
+        <button 
+          onClick={handleCloseSession}
+          disabled={!isAuthenticated || !sessionSigner}
+        >
+          ❌ Close Session
+        </button>
+        <button 
+          onClick={connectMetamask}
+          disabled={!!participantB}
+        >
+          🔌 Connect MetaMask
+        </button>
+      </div>
+      <div className="main-content">
+        <div className="canvas-section">
+          <canvas
+            ref={canvasRef}
+            width={500}
+            height={100}
+          />
+          <div style={{ width: '100%', marginTop: '2rem' }}>
+            <h2>Dominant Frequency Time Series</h2>
+            <Line data={{ labels, datasets }} options={options} />
+          </div>
+        </div>
+        <div className="text-section">
+          <h2>ClearNode Channels</h2>
+          {participantB && (
+            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
+              🔗 Connected wallet: <code>{participantB}</code>
+            </p>
           )}
-        </>
-      )}
-
-      <ChannelList channels={channels} balances={balances} />
+          <StatusPanel
+            status={status}
+            isAuthenticated={isAuthenticated}
+            error={error}
+            canConnect={!connected}
+          />
+          <ChannelList channels={channels} balances={balances} />
+        </div>
+      </div>
     </div>
   );
 }
