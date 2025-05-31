@@ -55,7 +55,7 @@ export default function App() {
   );
   const handleSessionCreate = async () => {
     const participantB = '0x656347DCa3bF0c127C8E4A93625f27b2367705a0';
-    const amount = '100';
+    const amount = '0.0001';
 
     try {
       const result = await createApplicationSession(participantB, amount);

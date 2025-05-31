@@ -10,8 +10,8 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
       log('🔧 Starting application session creation');
 
       try {
-        const participantA = sessionAddr;
-        log('📍 Session key (participant A):', participantA);
+        const participantA = '0x9d50c60853822e27Ac1a5E35B2903b055d7953C9';
+        log('📍 participant A:', participantA);
         log('📍 Participant B:', participantB);
         log('📍 Amount:', amount);
 
@@ -51,6 +51,8 @@ export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
                   ws.removeEventListener('message', handleMessage);
                   log('✅ App session response received');
                   resolve(message.res[2]);
+                  //stringify and store to local storage
+                  localStorage.setItem('app_session_response', JSON.stringify(message.res[2]));
                 }
               } catch (err) {
                 log('❌ Message parsing failed:', err);

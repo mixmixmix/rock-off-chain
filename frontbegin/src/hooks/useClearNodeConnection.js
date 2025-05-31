@@ -100,9 +100,9 @@ export function useClearNodeConnection({
     };
 
     const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
+      const message = await createGetLedgerBalancesMessage(channelMessageSigner, '0x9d50c60853822e27Ac1a5E35B2903b055d7953C9');
       socket.send(message);
-      log('📤 Sent get_ledger_balances for:', participant);
+      log('📤 Sent get_ledger_balances for:', '0x9d50c60853822e27Ac1a5E35B2903b055d7953C9');
     };
 
     socket.onopen = async () => {
