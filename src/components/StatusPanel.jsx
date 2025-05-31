@@ -5,7 +5,6 @@ export default function StatusPanel({
   status,
   isAuthenticated,
   error,
-  onConnect,
   canConnect
 }) {
   return (
@@ -13,10 +12,6 @@ export default function StatusPanel({
       <p>Status: {status}</p>
       <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-
-      <button onClick={onConnect} disabled={!canConnect}>
-        Connect to ClearNode
-      </button>
     </div>
   );
 }

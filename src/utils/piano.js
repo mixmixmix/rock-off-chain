@@ -31,7 +31,7 @@ function rollingMedian(arr, window = 3) {
 }
 
 // Extract most common frequencies quantised into 500 bins
-export function mostCommonFrequencies(freqSeries, binCount = 500, minFreq = 20, maxFreq = 20000) {
+export function mostCommonFrequencies(freqSeries, binCount = 1000, minFreq = 20, maxFreq = 20000) {
   const binWidth = (maxFreq - minFreq) / binCount;
   const counts = new Array(binCount).fill(0);
   let total = 0;
@@ -107,15 +107,17 @@ export function chartData(freqSeries) {
       data: smoothed,
       borderColor: baseColor,
       backgroundColor: 'rgba(30, 144, 255, 0.2)',
-      borderWidth: 2,
-      tension: 0.2,
-      pointRadius: 2,
+      borderWidth: 0,
+      tension: 0,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      showLine: false
     },
     ...horizontalLines(commonFreqs, highlightColors, freqSeries),
     {
       label: 'Top Notes',
       data: commonFreqs.map(f => ({ x: 0, y: f.freq })),
-      pointRadius: 5,
+      pointRadius: 6,
       pointHoverRadius: 8,
       borderWidth: 0,
       showLine: false,
