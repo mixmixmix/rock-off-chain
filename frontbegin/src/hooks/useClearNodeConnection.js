@@ -30,7 +30,7 @@ export function useClearNodeConnection({
 
   const myExpire = BigInt(Math.floor(Date.now() / 1000) + 3600);
 
-  const messageSigner = useCallback(async (payload) => {
+  const channelMessageSigner = useCallback(async (payload) => {
     const msg = JSON.stringify(payload);
     return await walletClient.signMessage({
       account: walletClient.account,
@@ -100,7 +100,7 @@ export function useClearNodeConnection({
     };
 
     const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(messageSigner, participant);
+      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
       socket.send(message);
       log('📤 Sent get_ledger_balances for:', participant);
     };
@@ -135,7 +135,7 @@ export function useClearNodeConnection({
         } else if (topic === 'auth_verify') {
           clearNodeJwt = message.res?.[2]?.[0]?.jwt_token || '';
           setIsAuthenticated(true);
-          const getChannelsMsg = await createGetChannelsMessage(messageSigner, wallet.address);
+          const getChannelsMsg = await createGetChannelsMessage(channelMessageSigner, wallet.address);
           socket.send(getChannelsMsg);
           log('📤 Sent get_channels');
         } else if (topic === 'auth_failure') {
@@ -170,7 +170,7 @@ export function useClearNodeConnection({
       log('🔌 WebSocket closed');
     };
 
-  }, [wallet, walletAddress, messageSigner, walletClient, getAuthDomain, AUTH_TYPES]);
+  }, [wallet, walletAddress, walletClient, getAuthDomain, AUTH_TYPES]);
 
   return {
     ws,
@@ -181,7 +181,7 @@ export function useClearNodeConnection({
     balances,
     connect,
     walletAddress,
-    signer: messageSigner,
+    signer: sessionSigner,
     sessionSigner,
     sessionAddress
   };

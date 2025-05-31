@@ -50,8 +50,8 @@ export default function App() {
 
   const { createApplicationSession } = useApplicationSession(
     ws,
-    sessionSigner?.sign,         // ✅ not `signer.sign`
-    sessionSigner?.address       // ✅ not `walletAddress`
+    sessionSigner?.sign,
+    sessionSigner?.address
   );
   const handleSessionCreate = async () => {
     const participantB = '0x656347DCa3bF0c127C8E4A93625f27b2367705a0';
@@ -59,7 +59,6 @@ export default function App() {
 
     try {
       const result = await createApplicationSession(participantB, amount);
-
       if (result.success && result.app_session_id) {
         alert(`✅ Session created!\nSession ID: ${result.app_session_id}`);
       } else if (result.success) {
