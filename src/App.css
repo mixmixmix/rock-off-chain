@@ -153,16 +153,78 @@ h1 {
   gap: 20px;
   padding: 20px;
   background-color: #2b1f1a;
+  width: 70%;
+  margin: 0 auto;
 }
 
 .canvas-section {
   flex: 1;
   min-width: 0; /* Prevents flex item from overflowing */
+  background-color: rgba(43, 31, 26, 0.8);
+  border: 1px solid rgba(255, 181, 71, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  overflow: hidden;
 }
 
 .text-section {
   flex: 1;
   min-width: 0; /* Prevents flex item from overflowing */
+  background-color: rgba(43, 31, 26, 0.8);
+  border: 1px solid rgba(255, 181, 71, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.text-section h2 {
+  margin-bottom: 1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  color: #ffb547;
+  font-weight: bold;
+}
+
+.text-section p {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: 0.5rem;
+  color: #ffb547;
+}
+
+.text-section code {
+  word-break: break-all;
+  display: inline-block;
+  max-width: 100%;
+  color: #ffb547;
+  font-weight: bold;
+}
+
+.wallet-status {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.wallet-status .status-on {
+  word-break: break-all;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.status-label {
+  font-weight: bold;
+  color: #ffb547;
+  margin-right: 0.5rem;
+}
+
+.status-on {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.status-off {
+  color: #ff4444;
+  font-weight: bold;
 }
 
 canvas {

@@ -283,17 +283,19 @@ export default function App() {
             height={100}
           />
           <div style={{ width: '100%', marginTop: '2rem' }}>
-            <h2>Dominant Frequency Time Series</h2>
             <Line data={{ labels, datasets }} options={options} />
           </div>
         </div>
         <div className="text-section">
           <h2>ClearNode Channels</h2>
-          {participantB && (
-            <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
-              🔗 Connected wallet: <code>{participantB}</code>
-            </p>
-          )}
+          <p className="wallet-status">
+            <span className="status-label">🔗 Wallet:</span>
+            {participantB ? (
+              <span className="status-on">{participantB}</span>
+            ) : (
+              <span className="status-off">OFF</span>
+            )}
+          </p>
           <StatusPanel
             status={status}
             isAuthenticated={isAuthenticated}

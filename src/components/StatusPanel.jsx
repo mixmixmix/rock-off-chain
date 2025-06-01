@@ -9,9 +9,23 @@ export default function StatusPanel({
 }) {
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <p>Status: {status}</p>
-      <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      <p>
+        <span className="status-label">🔌 Status:</span>
+        <span className={status === 'connected' ? 'status-on' : 'status-off'}>
+          {status === 'connected' ? 'ON' : 'OFF'}
+        </span>
+      </p>
+      <p>
+        <span className="status-label">🔐 Auth:</span>
+        <span className={isAuthenticated ? 'status-on' : 'status-off'}>
+          {isAuthenticated ? 'ON' : 'OFF'}
+        </span>
+      </p>
+      {error && (
+        <p className="status-off">
+          ⚠️ Error: {error}
+        </p>
+      )}
     </div>
   );
 }
