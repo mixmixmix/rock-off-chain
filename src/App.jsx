@@ -147,14 +147,14 @@ export default function App() {
       if (appSessionId) {
         // Get the chart data to check for minor chord and perfect fifth
         const { isMinorChord, hasPerfectFifth } = chartDataState || { isMinorChord: false, hasPerfectFifth: false };
-        
+
         console.log('💰 Starting Payout Analysis:', {
           totalAmount: total_amount,
           isMinorChord,
           hasPerfectFifth,
           sessionId: appSessionId
         });
-        
+
         // Calculate payout based on chord detection
         let payout = '0';
         if (isMinorChord) {
@@ -199,7 +199,7 @@ export default function App() {
           participantA,
           participantB
         });
-        
+
         await closeApplicationSession(appSessionId, participantA, participantB, remainingAmount, payout);
         localStorage.removeItem('app_session_id');
         console.log('✅ Session closed successfully:', {
@@ -251,6 +251,37 @@ export default function App() {
       <div className="banner">
         <img src={bannerImage} alt="Banner" />
       </div>
+      <div className="main-content">
+        <div className="canvas-section">
+          <canvas
+            ref={canvasRef}
+            width={500}
+            height={100}
+          />
+          <div style={{ width: '100%', marginTop: '2rem' }}>
+            <Line data={{ labels, datasets }} options={options} />
+          </div>
+        </div>
+        <div className="text-section">
+
+          <h2>IMAGE </h2>
+          <p className="wallet-status">
+            <span className="status-label">🔗 Wallet:</span>
+            {participantB ? (
+              <span className="status-on">{participantB}</span>
+            ) : (
+              <span className="status-off">OFF</span>
+            )}
+          </p>
+          <StatusPanel
+            status={status}
+            isAuthenticated={isAuthenticated}
+            error={error}
+            canConnect={!connected}
+          />
+          <ChannelList channels={channels} />
+        </div>
+      </div>
       <div className="button-row">
         <button
           onClick={() => {
@@ -274,36 +305,6 @@ export default function App() {
         >
           {recording ? `🎙️ Recording... ${recordingCountdown}s` : '🎙️ Record & Process'}
         </button>
-      </div>
-      <div className="main-content">
-        <div className="canvas-section">
-          <canvas
-            ref={canvasRef}
-            width={500}
-            height={100}
-          />
-          <div style={{ width: '100%', marginTop: '2rem' }}>
-            <Line data={{ labels, datasets }} options={options} />
-          </div>
-        </div>
-        <div className="text-section">
-          <h2>ClearNode Channels</h2>
-          <p className="wallet-status">
-            <span className="status-label">🔗 Wallet:</span>
-            {participantB ? (
-              <span className="status-on">{participantB}</span>
-            ) : (
-              <span className="status-off">OFF</span>
-            )}
-          </p>
-          <StatusPanel
-            status={status}
-            isAuthenticated={isAuthenticated}
-            error={error}
-            canConnect={!connected}
-          />
-          <ChannelList channels={channels} />
-        </div>
       </div>
     </div>
   );
