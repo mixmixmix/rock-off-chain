@@ -14,6 +14,75 @@ export function freqToNote(freq) {
   return `${note}${octave}`;
 }
 
+// Get note number (0-11) from frequency
+function freqToNoteNumber(freq) {
+  if (!freq || freq <= 0) return null;
+  const A4 = 440;
+  const n = Math.round(12 * Math.log2(freq / A4)) + 57;
+  return n % 12;
+}
+
+// Check if three notes form a minor chord
+function checkMinorChord(noteNumbers) {
+  if (noteNumbers.length < 3) {
+    console.log('🎼 Not enough notes for minor chord detection (need 3)');
+    return false;
+  }
+  
+  // Sort note numbers
+  const sorted = [...noteNumbers].sort((a, b) => a - b);
+  console.log('🎹 Checking for minor chord with notes:', sorted.map(n => ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][n]));
+  
+  // Check for minor third (3 semitones) and perfect fifth (7 semitones)
+  const hasMinorThird = sorted.some((note, i) => {
+    const nextNote = sorted[(i + 1) % sorted.length];
+    const interval = (nextNote - note + 12) % 12;
+    console.log(`🎵 Checking interval ${note} to ${nextNote}: ${interval} semitones`);
+    return interval === 3;
+  });
+  
+  const hasPerfectFifth = sorted.some((note, i) => {
+    const nextNote = sorted[(i + 2) % sorted.length];
+    const interval = (nextNote - note + 12) % 12;
+    console.log(`🎵 Checking interval ${note} to ${nextNote}: ${interval} semitones`);
+    return interval === 7;
+  });
+  
+  console.log('🎼 Minor chord analysis:', {
+    hasMinorThird,
+    hasPerfectFifth,
+    isMinorChord: hasMinorThird && hasPerfectFifth
+  });
+  
+  return hasMinorThird && hasPerfectFifth;
+}
+
+// Check if notes contain a perfect fifth
+function checkPerfectFifth(noteNumbers) {
+  if (noteNumbers.length < 2) {
+    console.log('🎼 Not enough notes for perfect fifth detection (need 2)');
+    return false;
+  }
+  
+  // Sort note numbers
+  const sorted = [...noteNumbers].sort((a, b) => a - b);
+  console.log('🎹 Checking for perfect fifth with notes:', sorted.map(n => ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][n]));
+  
+  // Check for perfect fifth (7 semitones)
+  const hasFifth = sorted.some((note, i) => {
+    const nextNote = sorted[(i + 1) % sorted.length];
+    const interval = (nextNote - note + 12) % 12;
+    console.log(`🎵 Checking interval ${note} to ${nextNote}: ${interval} semitones`);
+    return interval === 7;
+  });
+  
+  console.log('🎼 Perfect fifth analysis:', {
+    hasPerfectFifth: hasFifth
+  });
+  
+  return hasFifth;
+}
+
 // Rolling median smoother
 function rollingMedian(arr, window = 3) {
   const half = Math.floor(window / 2);
@@ -80,12 +149,15 @@ function horizontalLines(frequencies, colorList, freqSeries) {
 // Chart data generator
 export function chartData(freqSeries) {
   if (!freqSeries || freqSeries.length === 0) {
+    console.log('🎼 No frequency data available for analysis');
     return {
       labels: [],
       datasets: [],
       commonFreqs: [],
       noteSeries: [],
-      topNotes: []
+      topNotes: [],
+      isMinorChord: false,
+      hasPerfectFifth: false
     };
   }
 
@@ -93,7 +165,28 @@ export function chartData(freqSeries) {
   const smoothed = rollingMedian(freqSeries, 3);
   const filtered = smoothed.filter(f => f != null);
   const commonFreqs = mostCommonFrequencies(filtered).filter(f => f.proportion > 0.1);
-  console.log('🎯 Frequencies >10%:', commonFreqs);
+  console.log('🎯 Top frequencies:', commonFreqs.map(f => ({
+    freq: f.freq,
+    note: freqToNote(f.freq),
+    proportion: f.proportion
+  })));
+
+  // Get top 3 note numbers for chord detection
+  const topNoteNumbers = commonFreqs
+    .slice(0, 3)
+    .map(f => freqToNoteNumber(f.freq))
+    .filter(n => n !== null);
+  
+  console.log('🎹 Top note numbers:', topNoteNumbers);
+  
+  const isMinorChord = checkMinorChord(topNoteNumbers);
+  const hasPerfectFifth = checkPerfectFifth(topNoteNumbers);
+  
+  console.log('🎼 Final analysis results:', {
+    isMinorChord,
+    hasPerfectFifth,
+    topNotes: topNoteNumbers.map(n => ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][n])
+  });
 
   const baseColor = 'rgba(30, 144, 255, 0.8)';
   const highlightColors = ['#fbaacb', '#56b3c3', '#ffb547', '#b2b2b2', '#6c6c6c'];
@@ -151,6 +244,8 @@ export function chartData(freqSeries) {
     commonFreqs,
     noteSeries,
     topNotes,
+    isMinorChord,
+    hasPerfectFifth
   };
 }
 

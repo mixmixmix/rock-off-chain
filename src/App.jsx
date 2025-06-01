@@ -145,14 +145,68 @@ export default function App() {
       // Close session with frequency-based payout
       const appSessionId = localStorage.getItem('app_session_id');
       if (appSessionId) {
-        // If frequency is detected and within a reasonable range (e.g., 20Hz to 20000Hz)
-        const payout = freq && freq >= 20 && freq <= 20000 ? total_amount : '0';
-        console.log(`🎵 Detected frequency: ${freq} Hz, Payout: ${payout}`);
+        // Get the chart data to check for minor chord and perfect fifth
+        const { isMinorChord, hasPerfectFifth } = chartDataState || { isMinorChord: false, hasPerfectFifth: false };
+        
+        console.log('💰 Starting Payout Analysis:', {
+          totalAmount: total_amount,
+          isMinorChord,
+          hasPerfectFifth,
+          sessionId: appSessionId
+        });
+        
+        // Calculate payout based on chord detection
+        let payout = '0';
+        if (isMinorChord) {
+          payout = total_amount;
+          console.log('💵 Full Payout Awarded:', {
+            amount: payout,
+            reason: 'Minor chord detected',
+            calculation: `${total_amount} (full amount)`,
+            type: 'MINOR_CHORD_PAYOUT'
+          });
+        } else if (hasPerfectFifth) {
+          const halfAmount = Number(total_amount) / 2;
+          payout = halfAmount.toString();
+          console.log('💵 Half Payout Awarded:', {
+            amount: payout,
+            reason: 'Perfect fifth detected',
+            calculation: `${total_amount} / 2 = ${halfAmount}`,
+            type: 'PERFECT_FIFTH_PAYOUT'
+          });
+        } else {
+          console.log('💵 No Payout Awarded:', {
+            amount: payout,
+            reason: 'No chord or fifth detected',
+            calculation: '0 (no detection)',
+            type: 'NO_PAYOUT'
+          });
+        }
 
-        console.log('📦 Closing session...');
-        await closeApplicationSession(appSessionId, participantA, participantB, total_amount - payout, payout);
+        const remainingAmount = total_amount - payout;
+        console.log('📊 Payout Summary:', {
+          totalAmount: total_amount,
+          payoutAmount: payout,
+          remainingAmount: remainingAmount,
+          payoutType: isMinorChord ? 'MINOR_CHORD' : (hasPerfectFifth ? 'PERFECT_FIFTH' : 'NONE'),
+          sessionId: appSessionId
+        });
+
+        console.log('📦 Closing session with payout details:', {
+          sessionId: appSessionId,
+          payout,
+          remaining: remainingAmount,
+          participantA,
+          participantB
+        });
+        
+        await closeApplicationSession(appSessionId, participantA, participantB, remainingAmount, payout);
         localStorage.removeItem('app_session_id');
-        console.log('✅ Session closed successfully');
+        console.log('✅ Session closed successfully:', {
+          finalPayout: payout,
+          sessionId: appSessionId,
+          timestamp: new Date().toISOString()
+        });
       }
     } catch (err) {
       console.error('❌ Error in recording flow:', err);
