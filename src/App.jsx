@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ethers, BrowserProvider, getAddress } from 'ethers';
 import { Line } from 'react-chartjs-2';
 import bannerImage from './assets/banner.png';
+import playImage from './assets/play.png';
 import './App.css';
 
 import { createWalletClient, http } from 'viem';
@@ -267,7 +268,7 @@ export default function App() {
         </div>
         <div className="text-section">
 
-          <h2>IMAGE </h2>
+          <img src={playImage} alt="Play" style={{ width: '100%', maxWidth: '300px', marginBottom: '1rem' }} />
           <p className="wallet-status">
             <span className="status-label">🔗 Wallet:</span>
             {participantB ? (
