@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { createAppSessionMessage, createCloseAppSessionMessage } from '@erc7824/nitrolite';
 
-const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
+const log = (...args) => console.log('🔍', ...args);
 
 export function useApplicationSession(ws, sessionSignerFn, sessionAddr) {
   const createApplicationSession = useCallback(

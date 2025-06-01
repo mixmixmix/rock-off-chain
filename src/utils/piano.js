@@ -26,7 +26,7 @@ function rollingMedian(arr, window = 3) {
     result.push(median);
   }
 
-  console.log('Rolling median result:', result);
+  console.log('📊 Rolling median result:', result);
   return result;
 }
 
@@ -36,7 +36,7 @@ export function mostCommonFrequencies(freqSeries, binCount = 1000, minFreq = 20,
   const counts = new Array(binCount).fill(0);
   let total = 0;
 
-  console.log('Bin width:', binWidth);
+  console.log('📏 Bin width:', binWidth);
 
   for (const freq of freqSeries) {
     if (!freq || freq < minFreq || freq > maxFreq) continue;
@@ -45,7 +45,7 @@ export function mostCommonFrequencies(freqSeries, binCount = 1000, minFreq = 20,
     total++;
   }
 
-  console.log('Raw bin counts:', counts);
+  console.log('📈 Raw bin counts:', counts);
 
   const result = counts
     .map((count, i) => ({
@@ -56,13 +56,13 @@ export function mostCommonFrequencies(freqSeries, binCount = 1000, minFreq = 20,
     .filter(d => d.count > 0)
     .sort((a, b) => b.count - a.count);
 
-  console.log('Sorted dominant frequencies:', result);
+  console.log('🎵 Sorted dominant frequencies:', result);
 
   return result;
 }
 
 function horizontalLines(frequencies, colorList, freqSeries) {
-  console.log('Generating horizontal lines for frequencies:', frequencies);
+  console.log('📐 Generating horizontal lines for frequencies:', frequencies);
   return frequencies.map((f, i) => ({
     label: `~${f.freq} Hz (${freqToNote(f.freq)})`,
     data: freqSeries.map((_, j) => ({
@@ -79,27 +79,27 @@ function horizontalLines(frequencies, colorList, freqSeries) {
 
 // Chart data generator
 export function chartData(freqSeries) {
-  console.log('Original frequency series:', freqSeries);
+  console.log('🎼 Original frequency series:', freqSeries);
   const smoothed = rollingMedian(freqSeries, 3);
   const filtered = smoothed.filter(f => f != null);
   const commonFreqs = mostCommonFrequencies(filtered).filter(f => f.proportion > 0.1);
-  console.log('Frequencies >10%:', commonFreqs);
+  console.log('🎯 Frequencies >10%:', commonFreqs);
 
   const baseColor = 'rgba(30, 144, 255, 0.8)';
   const highlightColors = ['#fbaacb', '#56b3c3', '#ffb547', '#b2b2b2', '#6c6c6c'];
 
   const labels = freqSeries.map((_, i) => (i * 512 / 44100).toFixed(2));
-  console.log('Time labels:', labels);
+  console.log('⏱️ Time labels:', labels);
 
   const noteSeries = filtered.map(freqToNote);
-  console.log('Musical notes played:', noteSeries);
+  console.log('🎹 Musical notes played:', noteSeries);
 
   const topNotes = commonFreqs.map(f => ({
     freq: f.freq,
     note: freqToNote(f.freq),
     proportion: f.proportion,
   }));
-  console.log('Top notes:', topNotes);
+  console.log('🏆 Top notes:', topNotes);
 
   const datasets = [
     {
@@ -133,7 +133,7 @@ export function chartData(freqSeries) {
     }
   ];
 
-  console.log('Final datasets:', datasets);
+  console.log('📊 Final datasets:', datasets);
 
   return {
     labels,

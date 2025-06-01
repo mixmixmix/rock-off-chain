@@ -8,7 +8,7 @@ import {
 import { Wallet } from 'ethers';
 import { getAddress, keccak256, id, getBytes } from 'ethers';
 
-const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
+const log = (...args) => console.log('🔍', ...args);
 
 export function useClearNodeConnection({
   wallet,
