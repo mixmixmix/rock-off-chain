@@ -101,6 +101,15 @@ h1 {
   aspect-ratio: 16/9;
 }
 
+.button-row button:first-child {
+  width: 140px;
+  margin-left: 30px;
+}
+
+.button-row button:nth-child(3) {
+  width: 160px;
+}
+
 .button-row button {
   position: relative;
   z-index: 2;
@@ -117,9 +126,10 @@ h1 {
   letter-spacing: 0.5px;
   height: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   text-align: center;
+  padding-top: 20px;
 }
 
 .button-row button:hover {

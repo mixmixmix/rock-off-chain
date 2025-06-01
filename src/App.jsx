@@ -115,7 +115,7 @@ export default function App() {
 
     try {
       console.log('🎬 Starting recording flow...');
-      
+
       // Create session
       console.log('📝 Creating session...');
       const result = await createApplicationSession(participantB, total_amount);
@@ -131,7 +131,7 @@ export default function App() {
       console.log('🎙️ Starting recording...');
       const audioData = await audioToggle();
       console.log('✅ Recording completed');
-      
+
       // Run analysis on the audio data
       console.log('🔍 Running audio analysis...');
       if (audioData && audioData.length > 0) {
@@ -148,7 +148,7 @@ export default function App() {
         // If frequency is detected and within a reasonable range (e.g., 20Hz to 20000Hz)
         const payout = freq && freq >= 20 && freq <= 20000 ? total_amount : '0';
         console.log(`🎵 Detected frequency: ${freq} Hz, Payout: ${payout}`);
-        
+
         console.log('📦 Closing session...');
         await closeApplicationSession(appSessionId, participantA, participantB, total_amount - payout, payout);
         localStorage.removeItem('app_session_id');
@@ -157,7 +157,7 @@ export default function App() {
     } catch (err) {
       console.error('❌ Error in recording flow:', err);
       alert('Error in recording flow: ' + err.message);
-      
+
       // Clean up session ID if it exists
       const appSessionId = localStorage.getItem('app_session_id');
       if (appSessionId) {
@@ -198,12 +198,6 @@ export default function App() {
         <img src={bannerImage} alt="Banner" />
       </div>
       <div className="button-row">
-        <button 
-          onClick={handleRecordFlow} 
-          disabled={recording || !isAuthenticated || !sessionSigner || !participantB}
-        >
-          {recording ? `Recording... ${recordingCountdown}s` : 'Record & Process'}
-        </button>
         <button
           onClick={() => {
             connect();
@@ -211,13 +205,20 @@ export default function App() {
           }}
           disabled={connected}
         >
-          Connect to ClearNode
+          🔌 Connect to ClearNode
         </button>
         <button
           onClick={connectMetamask}
           disabled={!!participantB}
         >
-          🔌 Connect MetaMask
+          🦊 Connect MetaMask
+        </button>
+
+        <button
+          onClick={handleRecordFlow}
+          disabled={recording || !isAuthenticated || !sessionSigner || !participantB}
+        >
+          {recording ? `🎙️ Recording... ${recordingCountdown}s` : '🎙️ Record & Process'}
         </button>
       </div>
       <div className="main-content">
