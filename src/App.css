@@ -63,10 +63,13 @@ h1 {
   width: 100%;
   overflow: hidden;
   background-color: #2b1f1a;
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
 }
 
 .banner img {
-  width: 100%;
+  width: 70%;
   height: auto;
   display: block;
   object-fit: contain;
@@ -83,34 +86,56 @@ h1 {
 }
 
 .button-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background-image: url('./assets/amp.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   padding: 20px;
-  background-color: #2b1f1a;
-  border-bottom: 1px solid #3a2a24;
+  border-radius: 8px;
+  margin: 20px auto;
+  position: relative;
+  width: 70%;
+  aspect-ratio: 16/9;
 }
 
 .button-row button {
-  padding: 8px 16px;
-  background: #56b3c3;
-  border: none;
-  color: #000;
+  position: relative;
+  z-index: 2;
+  background: rgba(43, 31, 26, 0.8);
+  border: 1px solid rgba(255, 181, 71, 0.3);
+  color: #ffb547;
+  padding: 12px;
   cursor: pointer;
-  border-radius: 5px;
-  font-family: 'Orbitron', sans-serif;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
-.button-row button:hover:not(:disabled) {
-  background: #4a9eac;
+.button-row button:hover {
+  background: rgba(255, 181, 71, 0.2);
+  border-color: #ffb547;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 181, 71, 0.2);
 }
 
 .button-row button:disabled {
-  background: #3a2a24;
-  color: #666;
+  background: rgba(43, 31, 26, 0.4);
+  border-color: rgba(255, 181, 71, 0.1);
+  color: rgba(255, 181, 71, 0.3);
   cursor: not-allowed;
-  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
 }
 
 .main-content {
