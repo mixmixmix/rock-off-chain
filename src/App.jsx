@@ -39,6 +39,26 @@ export default function App() {
   const canvasRef = useRef(null);
   const { recording, audioToggle, monoData } = useAudioRecorder(canvasRef);
   const { freqSeries, silentFrames } = useAudioAnalysis(monoData);
+  const [recordingCountdown, setRecordingCountdown] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (recording) {
+      setRecordingCountdown(3);
+      timer = setInterval(() => {
+        setRecordingCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [recording]);
 
   if (!privateKey || !rpcUrl) {
     return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
@@ -179,7 +199,9 @@ export default function App() {
         <img src={bannerImage} alt="Banner" />
       </div>
       <div className="button-row">
-        <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
+        <button onClick={audioToggle} disabled={recording}>
+          {recording ? `Recording... ${recordingCountdown}s` : 'Record'}
+        </button>
         <button
           onClick={() => {
             connect();

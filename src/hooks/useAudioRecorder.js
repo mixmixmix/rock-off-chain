@@ -98,16 +98,18 @@ export function useAudioRecorder(canvasRef) {
         mediaRec.current.start();
         setRecording(true);
         console.log('▶️ Recording started...');
+
+        // Automatically stop after 3 seconds
+        setTimeout(() => {
+          if (mediaRec.current && mediaRec.current.state === 'recording') {
+            mediaRec.current.stop();
+            mediaRec.current.stream.getTracks().forEach((t) => t.stop());
+            setRecording(false);
+          }
+        }, 3000);
       } catch (err) {
         console.error('❌ Could not start audio capture:', err);
       }
-    } else {
-      console.log('⏹️ Stopping recording...');
-      if (mediaRec.current) {
-        mediaRec.current.stop();
-        mediaRec.current.stream.getTracks().forEach((t) => t.stop());
-      }
-      setRecording(false);
     }
   };
 
