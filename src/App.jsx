@@ -37,9 +37,18 @@ export default function App() {
   const [participantB, setParticipantB] = useState(null);
 
   const canvasRef = useRef(null);
-  const { recording, audioToggle, monoData } = useAudioRecorder(canvasRef);
-  const { freqSeries, silentFrames } = useAudioAnalysis(monoData);
+  const { recording, audioToggle, monoData, freq } = useAudioRecorder(canvasRef);
+  const { freqSeries, silentFrames, analyzeAudio } = useAudioAnalysis();
   const [recordingCountdown, setRecordingCountdown] = useState(0);
+  const [chartDataState, setChartDataState] = useState(null);
+
+  // Only generate chart data when we have frequency data
+  useEffect(() => {
+    if (freqSeries && freqSeries.length > 0) {
+      const data = chartData(freqSeries);
+      setChartDataState(data);
+    }
+  }, [freqSeries]);
 
   useEffect(() => {
     let timer;
@@ -98,64 +107,62 @@ export default function App() {
 
   const total_amount = '0.0001';
 
-  const handleSessionCreate = async () => {
-    try {
-      const result = await createApplicationSession(participantB, total_amount);
-      if (result.success && result.app_session_id) {
-        alert(`✅ Session created!\nSession ID: ${result.app_session_id}`);
-        localStorage.setItem('app_session_id', result.app_session_id);
-      } else if (result.success) {
-        alert('Session creation request sent, but no session ID returned.');
-      } else {
-        alert(`❌ Failed to create session:\n${result.error}`);
-      }
-    } catch (err) {
-      alert(`❌ Unexpected error:\n${err.message}`);
-    }
-  };
-
-  useEffect(() => {
-    if (!ws || !sessionSigner) return;
-
-    const interval = setInterval(async () => {
-      if (ws.readyState !== WebSocket.OPEN) return;
-
-      const ts1 = Date.now();
-      const ts2 = Date.now();
-      const payload = [ts1, "ping", [], ts2];
-      const signature = await sessionSigner.sign(payload);
-
-      ws.send(JSON.stringify({
-        req: payload,
-        sig: [signature]
-      }));
-      console.log('📡 Sent signed ping');
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [ws, sessionSigner]);
-
-  const handleCloseSession = async () => {
-    console.log('📦 Closing session...');
-    const appSessionId = localStorage.getItem('app_session_id');
-    const dice = parseInt(localStorage.getItem('last_dice_result') || '0');
-    console.log('🎲 Previous dice result:', dice);
-
-    if (!appSessionId) {
-      console.warn('❌ No app session ID in localStorage');
+  const handleRecordFlow = async () => {
+    if (!participantB) {
+      alert('Please connect MetaMask first');
       return;
     }
 
-    const payout = dice >= 4 ? '0.0001' : '0';
-    console.log(`💰 Calculated payout to B: ${payout} USDC`);
-
     try {
-      const result = await closeApplicationSession(appSessionId, participantA, participantB, total_amount - payout, payout);
-      console.log('✅ Session close result:', result);
-      alert(`✅ Session closed. Payout: ${payout} USDC`);
+      console.log('🎬 Starting recording flow...');
+      
+      // Create session
+      console.log('📝 Creating session...');
+      const result = await createApplicationSession(participantB, total_amount);
+      if (!result.success || !result.app_session_id) {
+        console.error('❌ Failed to create session:', result.error);
+        alert('Failed to create session');
+        return;
+      }
+      console.log('✅ Session created:', result.app_session_id);
+      localStorage.setItem('app_session_id', result.app_session_id);
+
+      // Start recording and wait for the audio data
+      console.log('🎙️ Starting recording...');
+      const audioData = await audioToggle();
+      console.log('✅ Recording completed');
+      
+      // Run analysis on the audio data
+      console.log('🔍 Running audio analysis...');
+      if (audioData && audioData.length > 0) {
+        analyzeAudio(audioData);
+        console.log('✅ Analysis completed');
+      } else {
+        console.error('❌ No audio data available for analysis');
+        throw new Error('No audio data available for analysis');
+      }
+
+      // Close session with frequency-based payout
+      const appSessionId = localStorage.getItem('app_session_id');
+      if (appSessionId) {
+        // If frequency is detected and within a reasonable range (e.g., 20Hz to 20000Hz)
+        const payout = freq && freq >= 20 && freq <= 20000 ? total_amount : '0';
+        console.log(`🎵 Detected frequency: ${freq} Hz, Payout: ${payout}`);
+        
+        console.log('📦 Closing session...');
+        await closeApplicationSession(appSessionId, participantA, participantB, total_amount - payout, payout);
+        localStorage.removeItem('app_session_id');
+        console.log('✅ Session closed successfully');
+      }
     } catch (err) {
-      console.error('❌ Failed to close session:', err);
-      alert(`❌ Failed to close session:\n${err.message}`);
+      console.error('❌ Error in recording flow:', err);
+      alert('Error in recording flow: ' + err.message);
+      
+      // Clean up session ID if it exists
+      const appSessionId = localStorage.getItem('app_session_id');
+      if (appSessionId) {
+        localStorage.removeItem('app_session_id');
+      }
     }
   };
 
@@ -176,8 +183,14 @@ export default function App() {
     }
   };
 
-  const { labels, datasets, commonFreqs, noteSeries, topNotes } = chartData(freqSeries);
-  const options = generateChartOptions(commonFreqs);
+  const { labels, datasets, commonFreqs, noteSeries, topNotes } = chartDataState || {
+    labels: [],
+    datasets: [],
+    commonFreqs: [],
+    noteSeries: [],
+    topNotes: []
+  };
+  const options = generateChartOptions(commonFreqs || []);
 
   return (
     <div className="app-container">
@@ -185,8 +198,11 @@ export default function App() {
         <img src={bannerImage} alt="Banner" />
       </div>
       <div className="button-row">
-        <button onClick={audioToggle} disabled={recording}>
-          {recording ? `Recording... ${recordingCountdown}s` : 'Record'}
+        <button 
+          onClick={handleRecordFlow} 
+          disabled={recording || !isAuthenticated || !sessionSigner || !participantB}
+        >
+          {recording ? `Recording... ${recordingCountdown}s` : 'Record & Process'}
         </button>
         <button
           onClick={() => {
@@ -196,18 +212,6 @@ export default function App() {
           disabled={connected}
         >
           Connect to ClearNode
-        </button>
-        <button
-          onClick={handleSessionCreate}
-          disabled={!isAuthenticated || !sessionSigner}
-        >
-          Create Application Session
-        </button>
-        <button
-          onClick={handleCloseSession}
-          disabled={!isAuthenticated || !sessionSigner}
-        >
-          ❌ Close Session
         </button>
         <button
           onClick={connectMetamask}

@@ -8,8 +8,8 @@ export function useAudioAnalysis(monoData, sampleRate = 44100) {
   const [freqSeries, setFreqSeries] = useState([]);
   const [silentFrames, setSilentFrames] = useState([]);
 
-  useEffect(() => {
-    if (!monoData) return;
+  const analyzeAudio = (audioData) => {
+    if (!audioData) return;
 
     const frameSize = 1024;
     const hopSize = 512;
@@ -17,8 +17,8 @@ export function useAudioAnalysis(monoData, sampleRate = 44100) {
     const freqs = [];
     const silents = [];
 
-    for (let i = 0; i + frameSize <= monoData.length; i += hopSize) {
-      const frame = monoData.slice(i, i + frameSize);
+    for (let i = 0; i + frameSize <= audioData.length; i += hopSize) {
+      const frame = audioData.slice(i, i + frameSize);
       const energy = frame.reduce((sum, v) => sum + v * v, 0) / frame.length;
 
       if (energy < threshold) {
@@ -41,7 +41,13 @@ export function useAudioAnalysis(monoData, sampleRate = 44100) {
 
     setFreqSeries(freqs);
     setSilentFrames(silents);
+  };
+
+  useEffect(() => {
+    if (monoData) {
+      analyzeAudio(monoData);
+    }
   }, [monoData]);
 
-  return { freqSeries, silentFrames };
+  return { freqSeries, silentFrames, analyzeAudio };
 }

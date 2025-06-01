@@ -64,35 +64,41 @@ export function useAudioRecorder(canvasRef) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRec.current = new MediaRecorder(stream);
 
-        mediaRec.current.ondataavailable = (e) => {
-          console.log('📥 Captured audio chunk');
-          chunks.current.push(e.data);
-        };
+        // Create a promise that will resolve with the audio data
+        const audioDataPromise = new Promise((resolve) => {
+          mediaRec.current.ondataavailable = (e) => {
+            console.log('📥 Captured audio chunk');
+            chunks.current.push(e.data);
+          };
 
-        mediaRec.current.onstop = async () => {
-          console.log('🛑 Recording stopped');
-          const blob = new Blob(chunks.current, { type: 'audio/webm' });
-          chunks.current = [];
+          mediaRec.current.onstop = async () => {
+            console.log('🛑 Recording stopped');
+            const blob = new Blob(chunks.current, { type: 'audio/webm' });
+            chunks.current = [];
 
-          console.log('🔄 Decoding audio blob...');
-          const arrayBuf = await blob.arrayBuffer();
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const audioBuf = await ctx.decodeAudioData(arrayBuf);
-          const mono = audioBuf.getChannelData(0);
+            console.log('🔄 Decoding audio blob...');
+            const arrayBuf = await blob.arrayBuffer();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuf = await ctx.decodeAudioData(arrayBuf);
+            const mono = audioBuf.getChannelData(0);
 
-          console.log('🎚 Mono data length:', mono.length);
-          setMonoData(mono.slice(0));
+            console.log('🎚 Mono data length:', mono.length);
+            setMonoData(mono.slice(0));
 
-          drawWaveform(mono);
+            drawWaveform(mono);
 
-          console.log('🧪 Running pitch analysis...');
-          const essentia = new Essentia(EssentiaWASM);
-          const vf = essentia.arrayToVector(mono);
-          const { pitch } = essentia.PitchYinFFT(vf);
-          setFreq(Math.round(pitch));
-          console.log(`🎼 Detected pitch: ${pitch.toFixed(2)} Hz`);
-          vf.delete();
-        };
+            console.log('🧪 Running pitch analysis...');
+            const essentia = new Essentia(EssentiaWASM);
+            const vf = essentia.arrayToVector(mono);
+            const { pitch } = essentia.PitchYinFFT(vf);
+            setFreq(Math.round(pitch));
+            console.log(`🎼 Detected pitch: ${pitch.toFixed(2)} Hz`);
+            vf.delete();
+
+            // Resolve the promise with the mono data
+            resolve(mono);
+          };
+        });
 
         chunks.current = [];
         mediaRec.current.start();
@@ -107,8 +113,12 @@ export function useAudioRecorder(canvasRef) {
             setRecording(false);
           }
         }, 3000);
+
+        // Return the promise that will resolve with the audio data
+        return audioDataPromise;
       } catch (err) {
         console.error('❌ Could not start audio capture:', err);
+        throw err;
       }
     }
   };
