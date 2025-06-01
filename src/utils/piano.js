@@ -79,6 +79,16 @@ function horizontalLines(frequencies, colorList, freqSeries) {
 
 // Chart data generator
 export function chartData(freqSeries) {
+  if (!freqSeries || freqSeries.length === 0) {
+    return {
+      labels: [],
+      datasets: [],
+      commonFreqs: [],
+      noteSeries: [],
+      topNotes: []
+    };
+  }
+
   console.log('🎼 Original frequency series:', freqSeries);
   const smoothed = rollingMedian(freqSeries, 3);
   const filtered = smoothed.filter(f => f != null);
