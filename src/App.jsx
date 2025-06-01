@@ -135,20 +135,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [ws, sessionSigner]);
 
-  const rollDice = () => {
-    const result = Math.floor(Math.random() * 6) + 1;
-    console.log(`🎲 Dice rolled: ${result}`);
-    console.log('🎼 Top Notes:', topNotes);
-
-    localStorage.setItem('last_dice_result', result.toString());
-
-    const appSessionId = localStorage.getItem('app_session_id');
-    if (!appSessionId) {
-      console.warn('❌ No app session ID in localStorage');
-      return;
-    }
-  };
-
   const handleCloseSession = async () => {
     console.log('📦 Closing session...');
     const appSessionId = localStorage.getItem('app_session_id');
@@ -216,21 +202,6 @@ export default function App() {
           disabled={!isAuthenticated || !sessionSigner}
         >
           Create Application Session
-        </button>
-        <button
-          onClick={() => {
-            localStorage.removeItem('clearnode_session_privkey');
-            window.location.reload();
-          }}
-          disabled={!isAuthenticated || !sessionSigner}
-        >
-          🔁 Reset Session Key
-        </button>
-        <button
-          onClick={rollDice}
-          disabled={!isAuthenticated || !sessionSigner}
-        >
-          🎲 Roll Dice
         </button>
         <button
           onClick={handleCloseSession}
