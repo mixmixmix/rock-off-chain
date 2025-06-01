@@ -27,53 +27,24 @@ import {
   PointElement,
   Title
 } from 'chart.js';
-
 import annotationPlugin from 'chartjs-plugin-annotation';
+
 ChartJS.register(LineElement, CategoryScale, LogarithmicScale, PointElement, Title, annotationPlugin);
 
 export default function App() {
   const privateKey = import.meta.env.VITE_PRIVATE_KEY;
   const rpcUrl = import.meta.env.VITE_POLYGON_RPC_URL;
+  const total_amount = '0.0001';
+
   const [connected, setConnected] = useState(false);
   const [participantB, setParticipantB] = useState(null);
-
+  const [lastPayout, setLastPayout] = useState(undefined);
   const canvasRef = useRef(null);
+
   const { recording, audioToggle, monoData, freq } = useAudioRecorder(canvasRef);
   const { freqSeries, silentFrames, analyzeAudio } = useAudioAnalysis();
   const [recordingCountdown, setRecordingCountdown] = useState(0);
   const [chartDataState, setChartDataState] = useState(null);
-  const [lastPayout, setLastPayout] = useState(undefined);
-
-  // Only generate chart data when we have frequency data
-  useEffect(() => {
-    if (freqSeries && freqSeries.length > 0) {
-      const data = chartData(freqSeries);
-      setChartDataState(data);
-    }
-  }, [freqSeries]);
-
-  useEffect(() => {
-    let timer;
-    if (recording) {
-      setRecordingCountdown(3);
-      timer = setInterval(() => {
-        setRecordingCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [recording]);
-
-  if (!privateKey || !rpcUrl) {
-    return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
-  }
 
   const wallet = privateKeyToAccount(privateKey);
   const walletAddress = getAddress(wallet.address);
@@ -107,7 +78,57 @@ export default function App() {
     closeApplicationSession
   } = useApplicationSession(ws, sessionSigner?.sign, sessionSigner?.address);
 
-  const total_amount = '0.0001';
+  useEffect(() => {
+    if (freqSeries && freqSeries.length > 0) {
+      const data = chartData(freqSeries);
+      setChartDataState(data);
+
+      const appSessionId = localStorage.getItem('app_session_id');
+      if (!appSessionId) return;
+
+      const { isMinorChord, hasPerfectFifth } = data || {};
+      let payout = '0';
+
+      if (isMinorChord) {
+        payout = total_amount;
+      } else if (hasPerfectFifth) {
+        payout = (Number(total_amount) / 2).toString();
+      }
+
+      setLastPayout(payout);
+      const remainingAmount = (Number(total_amount) - Number(payout)).toString();
+
+      console.log('📊 Payout Summary:', {
+        totalAmount: total_amount,
+        payoutAmount: payout,
+        remainingAmount: remainingAmount,
+        payoutType: isMinorChord ? 'MINOR_CHORD' : (hasPerfectFifth ? 'PERFECT_FIFTH' : 'NONE'),
+        sessionId: appSessionId
+      });
+
+      closeApplicationSession(appSessionId, participantA, participantB, remainingAmount, payout);
+      localStorage.removeItem('app_session_id');
+    }
+  }, [freqSeries]);
+
+  useEffect(() => {
+    let timer;
+    if (recording) {
+      setRecordingCountdown(3);
+      timer = setInterval(() => {
+        setRecordingCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [recording]);
 
   const handleRecordFlow = async () => {
     if (!participantB) {
@@ -117,106 +138,29 @@ export default function App() {
 
     try {
       console.log('🎬 Starting recording flow...');
-
-      // Create session
-      console.log('📝 Creating session...');
       const result = await createApplicationSession(participantB, total_amount);
       if (!result.success || !result.app_session_id) {
-        console.error('❌ Failed to create session:', result.error);
         alert('Failed to create session');
         return;
       }
+
       console.log('✅ Session created:', result.app_session_id);
       localStorage.setItem('app_session_id', result.app_session_id);
 
-      // Start recording and wait for the audio data
       console.log('🎙️ Starting recording...');
       const audioData = await audioToggle();
       console.log('✅ Recording completed');
 
-      // Run analysis on the audio data
-      console.log('🔍 Running audio analysis...');
       if (audioData && audioData.length > 0) {
+        console.log('🔍 Running audio analysis...');
         analyzeAudio(audioData);
-        console.log('✅ Analysis completed');
       } else {
-        console.error('❌ No audio data available for analysis');
         throw new Error('No audio data available for analysis');
       }
 
-      // Close session with frequency-based payout
-      const appSessionId = localStorage.getItem('app_session_id');
-      if (appSessionId) {
-        // Get the chart data to check for minor chord and perfect fifth
-        const { isMinorChord, hasPerfectFifth } = chartDataState || { isMinorChord: false, hasPerfectFifth: false };
-
-        console.log('💰 Starting Payout Analysis:', {
-          totalAmount: total_amount,
-          isMinorChord,
-          hasPerfectFifth,
-          sessionId: appSessionId
-        });
-
-        // Calculate payout based on chord detection
-        let payout = '0';
-        if (isMinorChord) {
-          payout = total_amount;
-          console.log('💵 Full Payout Awarded:', {
-            amount: payout,
-            reason: 'Minor chord detected',
-            calculation: `${total_amount} (full amount)`,
-            type: 'MINOR_CHORD_PAYOUT'
-          });
-        } else if (hasPerfectFifth) {
-          const halfAmount = Number(total_amount) / 2;
-          payout = halfAmount.toString();
-          console.log('💵 Half Payout Awarded:', {
-            amount: payout,
-            reason: 'Perfect fifth detected',
-            calculation: `${total_amount} / 2 = ${halfAmount}`,
-            type: 'PERFECT_FIFTH_PAYOUT'
-          });
-        } else {
-          console.log('💵 No Payout Awarded:', {
-            amount: payout,
-            reason: 'No chord or fifth detected',
-            calculation: '0 (no detection)',
-            type: 'NO_PAYOUT'
-          });
-        }
-
-        setLastPayout(payout);
-
-        const remainingAmount = total_amount - payout;
-        console.log('📊 Payout Summary:', {
-          totalAmount: total_amount,
-          payoutAmount: payout,
-          remainingAmount: remainingAmount,
-          payoutType: isMinorChord ? 'MINOR_CHORD' : (hasPerfectFifth ? 'PERFECT_FIFTH' : 'NONE'),
-          sessionId: appSessionId
-        });
-
-        console.log('📦 Closing session with payout details:', {
-          sessionId: appSessionId,
-          payout,
-          remaining: remainingAmount,
-          participantA,
-          participantB
-        });
-
-        await closeApplicationSession(appSessionId, participantA, participantB, remainingAmount, payout);
-        localStorage.removeItem('app_session_id');
-        console.log('✅ Session closed successfully:', {
-          finalPayout: payout,
-          sessionId: appSessionId,
-          timestamp: new Date().toISOString()
-        });
-      }
     } catch (err) {
       console.error('❌ Error in recording flow:', err);
       alert('Error in recording flow: ' + err.message);
-
-      // Clean up session ID if it exists
       const appSessionId = localStorage.getItem('app_session_id');
       if (appSessionId) {
         localStorage.removeItem('app_session_id');
@@ -241,6 +185,10 @@ export default function App() {
     }
   };
 
+  if (!privateKey || !rpcUrl) {
+    return <p style={{ color: 'red' }}>Missing PRIVATE_KEY or RPC URL</p>;
+  }
+
   const { labels, datasets, commonFreqs, noteSeries, topNotes } = chartDataState || {
     labels: [],
     datasets: [],
@@ -257,17 +205,12 @@ export default function App() {
       </div>
       <div className="main-content">
         <div className="canvas-section">
-          <canvas
-            ref={canvasRef}
-            width={500}
-            height={100}
-          />
+          <canvas ref={canvasRef} width={500} height={100} />
           <div style={{ width: '100%', marginTop: '2rem' }}>
             <Line data={{ labels, datasets }} options={options} />
           </div>
         </div>
         <div className="text-section">
-
           <img src={playImage} alt="Play" style={{ width: '100%', maxWidth: '300px', marginBottom: '1rem' }} />
           <p className="wallet-status">
             <span className="status-label">🔗 Wallet:</span>
@@ -306,7 +249,6 @@ export default function App() {
         >
           🦊 Connect MetaMask
         </button>
-
         <button
           onClick={handleRecordFlow}
           disabled={recording || !isAuthenticated || !sessionSigner || !participantB}
