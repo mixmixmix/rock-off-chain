@@ -41,6 +41,7 @@ export default function App() {
   const { freqSeries, silentFrames, analyzeAudio } = useAudioAnalysis();
   const [recordingCountdown, setRecordingCountdown] = useState(0);
   const [chartDataState, setChartDataState] = useState(null);
+  const [lastPayout, setLastPayout] = useState(undefined);
 
   // Only generate chart data when we have frequency data
   useEffect(() => {
@@ -183,6 +184,8 @@ export default function App() {
           });
         }
 
+        setLastPayout(payout);
+
         const remainingAmount = total_amount - payout;
         console.log('📊 Payout Summary:', {
           totalAmount: total_amount,
@@ -278,6 +281,10 @@ export default function App() {
             isAuthenticated={isAuthenticated}
             error={error}
             canConnect={!connected}
+            payout={lastPayout}
+            isMinorChord={chartDataState?.isMinorChord}
+            hasPerfectFifth={chartDataState?.hasPerfectFifth}
+            topNotes={chartDataState?.topNotes}
           />
           <ChannelList channels={channels} />
         </div>
