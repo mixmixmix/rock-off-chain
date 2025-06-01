@@ -60,11 +60,9 @@ export default function App() {
     isAuthenticated,
     error,
     channels,
-    balances,
     connect,
     walletAddress: resolvedAddress,
     sessionSigner,
-    requestLedgerBalances
   } = useClearNodeConnection({
     wallet,
     walletClient,
@@ -97,7 +95,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!ws || !sessionSigner || !requestLedgerBalances) return;
+    if (!ws || !sessionSigner) return;
 
     const interval = setInterval(async () => {
       if (ws.readyState !== WebSocket.OPEN) return;
@@ -112,14 +110,10 @@ export default function App() {
         sig: [signature]
       }));
       console.log('📡 Sent signed ping');
-
-      const account = sessionSigner.address;
-      await requestLedgerBalances(account);
-      console.log(`[Ledger] Requested balances for ${account}`);
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [ws, sessionSigner, requestLedgerBalances]);
+  }, [ws, sessionSigner]);
 
   const rollDice = () => {
     const result = Math.floor(Math.random() * 6) + 1;
@@ -186,7 +180,7 @@ export default function App() {
       </div>
       <div className="button-row">
         <button onClick={audioToggle}>{recording ? 'Stop' : 'Record'}</button>
-        <button 
+        <button
           onClick={() => {
             connect();
             setConnected(true);
@@ -195,13 +189,13 @@ export default function App() {
         >
           Connect to ClearNode
         </button>
-        <button 
+        <button
           onClick={handleSessionCreate}
           disabled={!isAuthenticated || !sessionSigner}
         >
           Create Application Session
         </button>
-        <button 
+        <button
           onClick={() => {
             localStorage.removeItem('clearnode_session_privkey');
             window.location.reload();
@@ -210,19 +204,19 @@ export default function App() {
         >
           🔁 Reset Session Key
         </button>
-        <button 
+        <button
           onClick={rollDice}
           disabled={!isAuthenticated || !sessionSigner}
         >
           🎲 Roll Dice
         </button>
-        <button 
+        <button
           onClick={handleCloseSession}
           disabled={!isAuthenticated || !sessionSigner}
         >
           ❌ Close Session
         </button>
-        <button 
+        <button
           onClick={connectMetamask}
           disabled={!!participantB}
         >
@@ -254,7 +248,7 @@ export default function App() {
             error={error}
             canConnect={!connected}
           />
-          <ChannelList channels={channels} balances={balances} />
+          <ChannelList channels={channels} />
         </div>
       </div>
     </div>

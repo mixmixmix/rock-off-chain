@@ -4,14 +4,12 @@ import {
   createAuthRequestMessage,
   createAuthVerifyMessage,
   createGetChannelsMessage,
-  createGetLedgerBalancesMessage
 } from '@erc7824/nitrolite';
 import { Wallet } from 'ethers';
 import { getAddress, keccak256, id, getBytes } from 'ethers';
 
 const log = (...args) => console.log(`[${new Date().toISOString()}]`, ...args);
 
-const myaccs = ['0x9d50c60853822e27Ac1a5E35B2903b055d7953C9','0x656347DCa3bF0c127C8E4A93625f27b2367705a0'];
 export function useClearNodeConnection({
   wallet,
   walletClient,
@@ -23,7 +21,6 @@ export function useClearNodeConnection({
   const [status, setStatus] = useState('disconnected');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [channels, setChannels] = useState([]);
-  const [balances, setBalances] = useState({});
   const [error, setError] = useState(null);
   const [sessionSigner, setSessionSigner] = useState(null);
   const [sessionAddress, setSessionAddress] = useState(null);
@@ -39,16 +36,6 @@ export function useClearNodeConnection({
       message: msg
     });
   }, [walletClient]);
-
-
-    const requestLedgerBalances = async (participant) => {
-      const message = await createGetLedgerBalancesMessage(channelMessageSigner, participant);
-      const parsed = JSON.parse(message);
-      const requestId = parsed.req?.[0];
-      if (requestId) requestMap.set(requestId, participant);
-      ws.send(message);
-      log('📤 Sent get_ledger_balances for:', participant);
-    };
 
 
   const connect = useCallback(() => {
@@ -152,23 +139,8 @@ export function useClearNodeConnection({
           const channelsList = message.res?.[2]?.[0] || [];
           setChannels(channelsList);
           log('📡 Received channels:', channelsList);
-          for (const account of myaccs) {
-            log('🔍 Requesting ledger balances for:', account);
-            await requestLedgerBalances(account);
-          }
-        } else if (topic === 'get_ledger_balances') {
-          const requestId = message.res?.[0];
-          const result = message.res?.[2]?.[0] || [];
-          const participant = requestMap.get(requestId);
-
-          if (participant && myaccs.includes(participant)) {
-            setBalances(prev => ({ ...prev, [participant]: result }));
-            requestMap.delete(requestId);
-            log('💰 Ledger balances for', participant, ':', result);
-          } else {
-            log('⚠️ Ignored ledger balance for non-matching participant:', participant);
-          }
-        }      } catch (err) {
+        }
+      } catch (err) {
         setError('Message handling error: ' + err.message);
         log('❌ Message handling error:', err);
       }
@@ -192,12 +164,10 @@ export function useClearNodeConnection({
     isAuthenticated,
     error,
     channels,
-    balances,
     connect,
     walletAddress,
     signer: sessionSigner,
     sessionSigner,
     sessionAddress,
-    requestLedgerBalances //says it is undefined!
   };
 }
