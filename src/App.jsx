@@ -166,7 +166,7 @@ export default function App() {
       const addr = getAddress(await signer.getAddress());
       setParticipantB(addr);
     } catch (err) {
-      console.error('[MetaMask] Error:', err);
+      console.error('❌ [MetaMask] Error:', err);
     }
   };
 
