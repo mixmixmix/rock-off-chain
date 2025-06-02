@@ -1,6 +1,7 @@
 # Rock Off Chain
 
-_A whimsical musical duel powered by machine learning & state channels_
+_A musical duel powered by machine learning & state channels_
+[Watch video here](https://youtu.be/CQqs_9edxMc)
 
 ## Overview
 
