@@ -1,12 +1,42 @@
-# React + Vite
+# Rock Off Chain
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+_A whimsical musical duel powered by machine learning & state channels_
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**Rock Off Chain** is a playful musical game where your ear and timing are pitted against machine learning—backed by real rewards, paid instantly and securely through off-chain state channels.
 
-## Expanding the ESLint configuration
+In the current MVP:
+- A game creator deposits funds via Nitrolite state channels ([ERC-7824](https://erc7824.org/)).
+- Players complete musical tasks set by the app to earn payouts.
+- The app connects to a nitrolite ClearNode using a pre-funded developer wallet for seamless, gasless off-chain transactions.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+See [this presentation](presentation.pdf) for more info.
+## Features
+
+- **Musical Challenges:** Players are tasked with performing specific musical intervals (like perfect fifths and minor chords), detected in real-time.
+- **Audio Signal Processing:**
+  - Audio captured in-browser, processed using [Math.js](https://mathjs.org/) for FFT (Fast Fourier Transform).
+  - [essentia.js](https://mtg.github.io/essentia.js/) handles deeper signal analysis.
+  - A median filter isolates frequencies in the musical range (20–20,000 Hz).
+- **Machine Learning Judgement:**
+  - ML models (future: trusted, upgradable) adjudicate the player’s performance.
+- **State Channels:**
+  - Lightning-fast, gasless payments via Nitrolite ERC-7824 channels.
+  - All transactions are auditable and can be settled on-chain.
+
+## Tech Stack
+
+- **Frontend:** [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Audio Processing:** [Math.js](https://mathjs.org/), [essentia.js](https://mtg.github.io/essentia.js/)
+- **Blockchain:**
+  - [Nitrolite](https://github.com/erc7824/) State Channels (ERC-7824)
+- **Custom Hooks:** For wallet and ClearNode connectivity
+
+## Roadmap
+
+- **MVP:** Solo musical games with machine adjudication and off-chain rewards (current)
+- **Future:**
+  - Multi-player duels adjudicated by ML
+  - On-chain state storage for full auditability
+  - Integration of trusted, upgradable ML models
